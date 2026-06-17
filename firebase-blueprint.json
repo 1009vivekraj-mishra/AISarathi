@@ -1,0 +1,152 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role, department, and registration status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "fullName": { "type": "string" },
+        "role": { "type": "string", "enum": ["employee", "manager", "admin"] },
+        "jobTitle": { "type": "string" },
+        "department": { "type": "string" },
+        "profileCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "username", "fullName", "role", "jobTitle", "department", "profileCompleted"]
+    },
+    "Competency": {
+      "title": "Competency",
+      "description": "Master industrial qualification required in the plant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "criticality": { "type": "string", "enum": ["high", "medium", "low"] },
+        "category": { "type": "string", "enum": ["Safety", "Metallurgy", "Operation", "Maintenance", "Digital Systems"] },
+        "requiredLevel": { "type": "integer" }
+      },
+      "required": ["id", "code", "name", "description", "criticality", "category", "requiredLevel"]
+    },
+    "UserSkill": {
+      "title": "UserSkill",
+      "description": "Record of a technician's level for a specific competency",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "competencyId": { "type": "string" },
+        "currentLevel": { "type": "integer" },
+        "updatedAt": { "type": "string" },
+        "source": { "type": "string", "enum": ["self", "assessment", "manager"] }
+      },
+      "required": ["id", "userId", "competencyId", "currentLevel", "updatedAt", "source"]
+    },
+    "Assessment": {
+      "title": "Assessment",
+      "description": "Standard multiple-choice safety/metallurgy/operation quiz",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "roleTarget": { "type": "string" }
+      },
+      "required": ["id", "title", "roleTarget"]
+    },
+    "AssessmentAttempt": {
+      "title": "AssessmentAttempt",
+      "description": "Record of a quiz attempt with scores and answers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "assessmentId": { "type": "string" },
+        "score": { "type": "integer" },
+        "completedAt": { "type": "string" },
+        "passed": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "assessmentId", "score", "completedAt", "passed"]
+    },
+    "KnowledgeDoc": {
+      "title": "KnowledgeDoc",
+      "description": "Expert system document, SOP, or training safety manual",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["sop", "safety_manual", "logbook", "expert_session"] },
+        "content": { "type": "string" },
+        "competencyId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "content", "createdBy", "createdAt"]
+    },
+    "MentorSession": {
+      "title": "MentorSession",
+      "description": "Archived field mentoring session with logs or notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "mentorId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "competencyId": { "type": "string" },
+        "scheduledAt": { "type": "string" },
+        "sessionNotes": { "type": "string" },
+        "capturedKnowledge": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "scheduled", "completed", "cancelled"] },
+        "approvedByManager": { "type": "boolean" }
+      },
+      "required": ["id", "mentorId", "employeeId", "competencyId", "scheduledAt", "sessionNotes", "status", "approvedByManager"]
+    },
+    "MentorNomination": {
+      "title": "MentorNomination",
+      "description": "Technician self-nomination to coach peer competencies",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "yearsExp": { "type": "integer" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] }
+      },
+      "required": ["id", "userId", "yearsExp", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account profiles"
+    },
+    "/competencies/{competencyId}": {
+      "schema": "Competency",
+      "description": "Static industrial competency catalog"
+    },
+    "/user_skills/{skillId}": {
+      "schema": "UserSkill",
+      "description": "Competency metrics owned by users"
+    },
+    "/assessments/{assessmentId}": {
+      "schema": "Assessment",
+      "description": "Safety compliance tests"
+    },
+    "/attempts/{attemptId}": {
+      "schema": "AssessmentAttempt",
+      "description": "Quiz attempt safety logs"
+    },
+    "/knowledge_docs/{docId}": {
+      "schema": "KnowledgeDoc",
+      "description": "Plant SOP and industrial safety manual warehouse"
+    },
+    "/mentor_sessions/{sessionId}": {
+      "schema": "MentorSession",
+      "description": "Field training sessions"
+    },
+    "/mentor_nominations/{nominationId}": {
+      "schema": "MentorNomination",
+      "description": "Mentor self nominations"
+    }
+  }
+}

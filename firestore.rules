@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getUserRole(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'admin';
+    }
+
+    function isManager() {
+      return isSignedIn() && getUserRole(request.auth.uid) == 'manager';
+    }
+
+    // --- VALIDATORS ---
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.username is string && data.username.size() <= 100
+        && data.fullName is string && data.fullName.size() <= 200
+        && data.role is string && (data.role == 'employee' || data.role == 'manager' || data.role == 'admin')
+        && data.jobTitle is string && data.jobTitle.size() <= 150
+        && data.department is string && data.department.size() <= 150
+        && data.profileCompleted is bool;
+    }
+
+    function isValidCompetency(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.code is string && data.code.size() <= 50
+        && data.name is string && data.name.size() <= 200
+        && data.description is string && data.description.size() <= 1000
+        && data.criticality is string && (data.criticality == 'high' || data.criticality == 'medium' || data.criticality == 'low')
+        && data.category is string && (data.category == 'Safety' || data.category == 'Metallurgy' || data.category == 'Operation' || data.category == 'Maintenance' || data.category == 'Digital Systems')
+        && data.requiredLevel is int && data.requiredLevel >= 1 && data.requiredLevel <= 5;
+    }
+
+    function isValidUserSkill(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.competencyId is string && data.competencyId.size() <= 128
+        && data.currentLevel is int && data.currentLevel >= 0 && data.currentLevel <= 5
+        && data.updatedAt is string
+        && data.source is string && (data.source == 'self' || data.source == 'assessment' || data.source == 'manager');
+    }
+
+    function isValidAssessment(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.roleTarget is string && data.roleTarget.size() <= 150;
+    }
+
+    function isValidAttempt(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.assessmentId is string && data.assessmentId.size() <= 128
+        && data.score is int && data.score >= 0 && data.score <= 100
+        && data.completedAt is string
+        && data.passed is bool;
+    }
+
+    function isValidDoc(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 250
+        && data.type is string && (data.type == 'sop' || data.type == 'safety_manual' || data.type == 'logbook' || data.type == 'expert_session')
+        && data.content is string && data.content.size() <= 100000
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdAt is string;
+    }
+
+    function isValidSession(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.mentorId is string && data.mentorId.size() <= 128
+        && data.employeeId is string && data.employeeId.size() <= 128
+        && data.competencyId is string && data.competencyId.size() <= 128
+        && data.scheduledAt is string
+        && data.sessionNotes is string && data.sessionNotes.size() <= 5000
+        && data.status is string && (data.status == 'pending' || data.status == 'scheduled' || data.status == 'completed' || data.status == 'cancelled')
+        && data.approvedByManager is bool;
+    }
+
+    function isValidNomination(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.yearsExp is int && data.yearsExp >= 0 && data.yearsExp <= 60
+        && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
+    }
+
+    // --- MATCH BLOCKS ---
+    
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isAdmin() || (userId == request.auth.uid && isValidUser(incoming()) && incoming().role == existing().role)
+      );
+    }
+
+    match /competencies/{competencyId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(competencyId) && isValidCompetency(incoming());
+    }
+
+    match /user_skills/{skillId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(skillId) && isValidUserSkill(incoming());
+    }
+
+    match /assessments/{assessmentId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(assessmentId) && isValidAssessment(incoming());
+    }
+
+    match /attempts/{attemptId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(attemptId) && isValidAttempt(incoming());
+    }
+
+    match /knowledge_docs/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(docId) && isValidDoc(incoming());
+      allow update, delete: if isSignedIn() && (isAdmin() || existing().createdBy == request.auth.uid);
+    }
+
+    match /mentor_sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidSession(incoming());
+      allow update: if isSignedIn() && isValidId(sessionId) && isValidSession(incoming());
+    }
+
+    match /mentor_nominations/{nominationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(nominationId) && isValidNomination(incoming());
+      allow update: if isSignedIn() && isValidId(nominationId) && isValidNomination(incoming());
+    }
+  }
+}

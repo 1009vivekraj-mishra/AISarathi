@@ -1,0 +1,6 @@
+{
+  "name": "Sarathi AI",
+  "description": "Workforce Intelligence System for large industrial organizations, providing skills management, training, RAG AI co-pilots, and competency analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

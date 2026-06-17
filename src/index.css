@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom CSS animations and smooth styling */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(249, 115, 22, 0.5);
+  }
+}
+
+.danger-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
