@@ -184,10 +184,10 @@ export const api = {
   },
 
   // AI Trainer
-  async askAITrainer(query: string, history: { role: string; text: string }[]) {
+  async askAITrainer(query: string, history: { role: string; text: string }[], engine?: "gemini" | "groq") {
     const res = await fetch(`${API_BASE}/ai-trainer/query`, {
       method: "POST",
-      body: JSON.stringify({ query, history }),
+      body: JSON.stringify({ query, history, engine }),
       headers: getHeaders()
     });
     const data = await res.json();

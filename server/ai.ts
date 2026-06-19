@@ -117,8 +117,8 @@ Return only the raw lowercase tag string (either "english", "hindi", or "hinglis
 }
 
 /**
- * Generates an answer from Gemini that integrates seeded safety Manuals, SOP sheets,
- * or expert knowledge from our Knowledge Hub. Handles English, Hindi, and Hinglish.
+ * Generates an answer that integrates seeded safety Manuals, SOP sheets,
+ * or expert knowledge from our Knowledge Hub. Supports Gemini and Groq engines.
  */
 export async function generateRAGAnswer(params: {
   query: string;
@@ -126,8 +126,9 @@ export async function generateRAGAnswer(params: {
   contextDocs: { title: string; content: string; type: string }[];
   history: { role: string; text: string }[];
   userProfile: { fullName: string; jobTitle: string; dept: string };
+  engine?: "gemini" | "groq";
 }): Promise<string> {
-  const { query, detectedLanguage, contextDocs, history, userProfile } = params;
+  const { query, detectedLanguage, contextDocs, history, userProfile, engine } = params;
 
   // Format context documents
   const formattedDocs = contextDocs.length > 0
@@ -160,6 +161,21 @@ Operational Context Guidance:
 - Code Words & Warning Formatting: If safety limits are violated in user queries, emphasize warnings in bold safety-orange styled layouts.
 - If the supplied SOP Documents do not contain the answer, answer the question accurately anyway using your general industrial engineering knowledge, but clearly append a footer notice saying: "ℹ️ Note: This response drew on general knowledge as specialized local documents were not available in the Knowledge Hub."
 `;
+
+  // Explicit route to Groq engine if selected and configured
+  if (engine === "groq" && process.env.GROQ_API_KEY) {
+    try {
+      console.log("⚡ [Groq Engine] Invoking Llama-3-70b-versatile...");
+      return await generateGroqAnswer({
+        query,
+        systemInstruction,
+        contextDocsText: formattedDocs,
+        history
+      });
+    } catch (groqError: any) {
+      console.error("Groq core generation failed. Falling back back to standard Gemini:", groqError);
+    }
+  }
 
   try {
     const ai = getAI();
@@ -213,4 +229,58 @@ Sarathi AI is currently offline or operating without a valid GEMINI_API_KEY. How
 - Relevant offline document match: "${contextDocs[0]?.title || "SOP Sheet #1"}" check this manual in the Knowledge Hub tab.`;
     }
   }
+}
+
+/**
+ * Generate completion helper for Groq's high-speed inference engine (Llama-3-70B)
+ */
+export async function generateGroqAnswer(params: {
+  query: string;
+  systemInstruction: string;
+  contextDocsText: string;
+  history: { role: string; text: string }[];
+}): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY is not defined in user environments.");
+  }
+
+  const messages = [
+    { role: "system", content: params.systemInstruction },
+    ...params.history.map(h => ({
+      role: h.role === "user" ? "user" : "assistant",
+      content: h.text
+    })),
+    {
+      role: "user",
+      content: `Here is the current operational reference documentation from our Knowledge Hub:
+---------------------
+${params.contextDocsText}
+---------------------
+
+Question/Command:
+"${params.query}"`
+    }
+  ];
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      temperature: 0.6
+    })
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Groq API returned [Status ${response.status}]: ${errorBody}`);
+  }
+
+  const data = (await response.json()) as any;
+  return data.choices?.[0]?.message?.content || "No reply content was returned by Groq.";
 }

@@ -716,7 +716,7 @@ router.post("/learning-paths/complete", authenticateToken, (req: Request, res: R
 
 router.post("/ai-trainer/query", authenticateToken, async (req: Request, res: Response) => {
   const reqUser = (req as any).user;
-  const { query, history } = req.body; // history is past chat blocks
+  const { query, history, engine } = req.body; // history is past chat blocks
 
   if (!query) {
     res.status(400).json({ error: "Query text parameter is required." });
@@ -777,7 +777,8 @@ router.post("/ai-trainer/query", authenticateToken, async (req: Request, res: Re
       fullName: user.fullName,
       jobTitle: user.jobTitle,
       dept: user.department
-    }
+    },
+    engine: engine
   });
 
   // AUTO-GENERATIVE KNOWLEDGE INGESTION GAUGE:

@@ -65,6 +65,7 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSources, setChatSources] = useState<{ title: string; type: string }[]>([]);
+  const [aiEngine, setAiEngine] = useState<"gemini" | "groq">("gemini");
 
   // Search Knowledge Hub state
   const [searchQuery, setSearchQuery] = useState("");
@@ -290,7 +291,7 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
     setChatMessages(prev => [...prev, { role: "user", text: userMsg }]);
 
     try {
-      const res = await api.askAITrainer(userMsg, chatMessages.map(m => ({ role: m.role, text: m.text })));
+      const res = await api.askAITrainer(userMsg, chatMessages.map(m => ({ role: m.role, text: m.text })), aiEngine);
       setChatMessages(prev => [...prev, { role: "model", text: res.answer, detectedLanguage: res.detectedLanguage }]);
       setChatSources(res.retrievedContext || []);
       loadEmployeeData(); // Refresh auto generated logs!
@@ -722,6 +723,36 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
 
             {/* Chat Box Interface */}
             <div className="bg-slate-50 border border-slate-200 rounded-md flex flex-col h-[380px]">
+              {/* LLM Engine selector rail */}
+              <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between rounded-t-md text-xs select-none">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">Engine:</span>
+                  <div className="flex bg-slate-100 p-0.5 rounded border border-slate-200/60 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setAiEngine("gemini")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-sans font-bold cursor-pointer transition-colors ${aiEngine === "gemini" ? "bg-[#0284C7] text-white" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Gemini Flash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiEngine("groq")}
+                      className={`px-2 py-0.5 rounded text-[10px] font-sans font-bold cursor-pointer transition-colors ${aiEngine === "groq" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Groq Llama-3
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] font-mono tracking-wider font-extrabold uppercase shrink-0">
+                  {aiEngine === "groq" ? (
+                    <span className="text-purple-600">Active: Llama 70B</span>
+                  ) : (
+                    <span className="text-sky-600">Active: Gemini 3.5</span>
+                  )}
+                </div>
+              </div>
+
               {/* Chat timeline logs */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans text-xs">
                 {chatMessages.length === 0 ? (
