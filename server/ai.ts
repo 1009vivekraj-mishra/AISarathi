@@ -92,6 +92,44 @@ export async function detectInputLanguage(query: string): Promise<"english" | "h
     defaultLang = "hinglish";
   }
 
+  // 1. First try using Groq for language detection if GROQ_API_KEY is present
+  const groqKey = process.env.GROQ_API_KEY;
+  if (groqKey) {
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content: `You are a high-speed, accurate multi-lingual detection classifier. Classify the following input query from an industrial plant operator into exactly one of three string tags: "english", "hindi", or "hinglish".
+Input Query: "${query}"
+Return only the raw lowercase tag string (either "english", "hindi", or "hinglish"). No explanation, no punctuation, and no other text.`
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 10
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json() as any;
+        const parsed = (data.choices?.[0]?.message?.content || "").trim().toLowerCase();
+        if (parsed.includes("hinglish")) return "hinglish";
+        if (parsed.includes("hindi")) return "hindi";
+        if (parsed.includes("english")) return "english";
+      }
+    } catch (groqLangErr) {
+      console.warn("Groq language detection failed:", groqLangErr);
+    }
+  }
+
+  // 2. Fallback to Gemini if GROQ is absent or fails
   try {
     const ai = getAI();
     const result = await ai.models.generateContent({
@@ -162,8 +200,9 @@ Operational Context Guidance:
 - If the supplied SOP Documents do not contain the answer, answer the question accurately anyway using your general industrial engineering knowledge, but clearly append a footer notice saying: "ℹ️ Note: This response drew on general knowledge as specialized local documents were not available in the Knowledge Hub."
 `;
 
-  // Explicit route to Groq engine if selected and configured
-  if (engine === "groq" && process.env.GROQ_API_KEY) {
+  // Route to Groq engine if explicitly selected OR if no engine is specified but GROQ_API_KEY is available
+  const shouldUseGroq = (engine === "groq" || !engine) && process.env.GROQ_API_KEY;
+  if (shouldUseGroq) {
     try {
       console.log("⚡ [Groq Engine] Invoking Llama-3-70b-versatile...");
       return await generateGroqAnswer({

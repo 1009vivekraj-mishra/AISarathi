@@ -65,7 +65,7 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSources, setChatSources] = useState<{ title: string; type: string }[]>([]);
-  const [aiEngine, setAiEngine] = useState<"gemini" | "groq">("gemini");
+  const [aiEngine, setAiEngine] = useState<"gemini" | "groq">("groq");
 
   // Search Knowledge Hub state
   const [searchQuery, setSearchQuery] = useState("");
