@@ -55,6 +55,98 @@ export const api = {
     return data;
   },
 
+  async getOnboardingQuestions() {
+    const res = await fetch(`${API_BASE}/onboarding/questions`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load onboarding questions");
+    return data;
+  },
+
+  async submitOnboardingAnswers(answers: { [key: string]: number }) {
+    const res = await fetch(`${API_BASE}/auth/onboard-test`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ answers })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to grade onboarding assessment");
+    return data;
+  },
+
+  async getRoles() {
+    const res = await fetch(`${API_BASE}/roles`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load roles");
+    return data;
+  },
+
+  async createRole(payload: any) {
+    const res = await fetch(`${API_BASE}/roles`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create role definition");
+    return data;
+  },
+
+  async updateRole(id: string, payload: any) {
+    const res = await fetch(`${API_BASE}/roles/${id}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update role mapping");
+    return data;
+  },
+
+  async getQuestions() {
+    const res = await fetch(`${API_BASE}/questions`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load question bank");
+    return data;
+  },
+
+  async createQuestion(payload: any) {
+    const res = await fetch(`${API_BASE}/questions`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create question");
+    return data;
+  },
+
+  async updateQuestion(id: string, payload: any) {
+    const res = await fetch(`${API_BASE}/questions/${id}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to edit question");
+    return data;
+  },
+
+  async deleteQuestion(id: string) {
+    const res = await fetch(`${API_BASE}/questions/${id}`, {
+      method: "DELETE",
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to delete question");
+    return data;
+  },
+
   // Users
   async getTeam() {
     const res = await fetch(`${API_BASE}/users/team`, {

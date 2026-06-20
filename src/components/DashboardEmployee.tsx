@@ -3,7 +3,8 @@ import {
   Briefcase, ShieldAlert, Brain, BookOpen, Users, Share2, 
   Award, Network, Send, Upload, Bookmark, CheckCircle2, 
   AlertTriangle, Search, Plus, ChevronRight, Info, Sparkles, 
-  Clock, ArrowRight, UserCheck, Check, RotateCcw
+  Clock, ArrowRight, UserCheck, Check, RotateCcw,
+  Video, FileText, ExternalLink
 } from "lucide-react";
 import { api } from "../api.js";
 import { translations } from "../translations.js";
@@ -682,23 +683,73 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
                   </div>
 
                   {/* Syllabus Brief */}
-                  <div className="mt-4 pt-3 border-t border-slate-200 bg-white border p-3 rounded text-xs text-slate-705 font-sans whitespace-pre-line leading-relaxed">
-                    {item.module.content}
+                  <div className="mt-4 pt-3 border-t border-slate-200">
+                    <span className="text-[10px] text-slate-500 font-mono block uppercase tracking-wider font-bold mb-1.5">Official SOP Syllabus & Guidelines (मानक संचालन प्रक्रिया)</span>
+                    <div className="bg-white border p-3 rounded text-xs text-slate-705 font-sans whitespace-pre-line leading-relaxed border-slate-200">
+                      {item.module.content}
+                    </div>
                   </div>
 
-                  {/* Shared Resources */}
+                  {/* 💡 Easy words explanation */}
+                  <div className="mt-4 p-4 rounded-lg bg-indigo-50/40 border border-indigo-100/60 space-y-3 shadow-3xs">
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-sans font-extrabold text-xs">
+                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                      <span>CONCEPT GUIDE: Explained in Easy Words (सरल सामान्य भाषा गाइड)</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans leading-relaxed text-slate-750">
+                      <div className="space-y-1 bg-white/70 p-3 rounded border border-slate-100">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-mono font-bold block">English Simple Terms:</span>
+                        <p className="text-slate-705 leading-relaxed font-sans mt-0.5">
+                          {item.module.easyExplanation || "In simple terms, this course helps you understand practical hazard protection, how process limits operate, and what immediate troubleshooting actions are needed on-site."}
+                        </p>
+                      </div>
+                      <div className="space-y-1 bg-white/70 p-3 rounded border border-indigo-100/30">
+                        <span className="text-[10px] uppercase tracking-wider text-indigo-500 font-mono font-bold block">सरल हिंदी स्पष्टीकरण:</span>
+                        <p className="text-slate-800 leading-relaxed font-sans mt-0.5">
+                          {item.module.easyExplanationHindi || "आसान शब्दों में कहें तो, यह कोर्स आपको प्रैक्टिकल सुरक्षा नियमों, मशीनों और उपकरणों की सीमा और आपातकालीन स्थिति में तुरंत की जाने वाली जरूरी कार्रवाई समझाता है।"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shared Real Curated Resources */}
                   {item.module.resources && item.module.resources.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-slate-200">
-                      <span className="text-[10px] text-slate-400 font-mono self-center">Attachments:</span>
-                      {item.module.resources.map((res: any, idx: number) => (
-                        <a 
-                          key={idx} 
-                          href={res.url} 
-                          className="px-2 py-0.5 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 rounded border border-slate-200 font-mono"
-                        >
-                          {res.name}
-                        </a>
-                      ))}
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <span className="text-[10px] text-slate-500 font-mono block uppercase tracking-wider font-bold mb-2.5">
+                        📚 Real Study Resources & Reference Links:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {item.module.resources.map((res: any, idx: number) => {
+                          const isVideo = res.url.includes("youtube.com") || res.url.includes("youtu.be") || res.name.toLowerCase().includes("video");
+                          const isPdf = res.url.includes(".pdf") || res.name.toLowerCase().includes("pdf") || res.name.toLowerCase().includes("manual") || res.name.toLowerCase().includes("handbook");
+                          
+                          return (
+                            <a 
+                              key={idx} 
+                              href={res.url} 
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-3 p-3 rounded-lg bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-650 hover:shadow-xs transition-all text-xs group"
+                            >
+                              <div className={`p-2 rounded shrink-0 ${isVideo ? "bg-rose-50 text-rose-600" : isPdf ? "bg-[#0284C7]/10 text-[#0284C7]" : "bg-teal-50 text-teal-600"}`}>
+                                {isVideo ? (
+                                  <Video className="w-4 h-4" />
+                                ) : isPdf ? (
+                                  <FileText className="w-4 h-4" />
+                                ) : (
+                                  <ExternalLink className="w-4 h-4" />
+                                )}
+                              </div>
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <span className="font-sans font-bold text-slate-800 block truncate group-hover:text-indigo-650">{res.name}</span>
+                                <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider block font-bold">
+                                  {isVideo ? "Video Lesson (टीचिंग वीडियो)" : isPdf ? "Official Manual (पीडीएफ गाइड)" : "Standard Portal (अकादमिक लिंक)"}
+                                </span>
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>

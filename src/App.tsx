@@ -11,6 +11,47 @@ import DashboardAdmin from "./components/DashboardAdmin.tsx";
 import { translations, Language } from "./translations.js";
 import { db, testConnection } from "./firebase.js";
 
+export function SarathiLogo({ className = "w-12 h-12" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sarathiGrad" x1="15%" y1="15%" x2="85%" y2="85%">
+          <stop offset="0%" stopColor="#1E3A8A" />
+          <stop offset="50%" stopColor="#0284C7" />
+          <stop offset="100%" stopColor="#38BDF8" />
+        </linearGradient>
+      </defs>
+      
+      {/* S shape upper loop + face contour profile */}
+      <path
+        d="M62,28 C62,28 62.5,23.5 54,21.5 C43.5,19 32,25.5 31,37 C30.5,43 32,48.5 35.5,51 C39,53.5 38.5,55 35,55 C34.5,52 35.5,50 36.5,48.5 C34.4,46.5 35.5,44.5 37.5,44.5 C36.5,42.5 37,40.5 39,40.5 C37,38.5 38.5,36.5 41.5,36.5 C43,36.5 45.5,37.5 48.5,39 C55,42 63.5,34.5 62,28 Z"
+        fill="url(#sarathiGrad)"
+      />
+      
+      {/* S shape bottom loop + arrow */}
+      <path
+        d="M31,64 C42,64 54,58 64,48 C66,46 67,43 68,41 C67,43 65,47 62,50 C51,59 38,64 29,64 Z"
+        fill="url(#sarathiGrad)"
+        opacity="0.85"
+      />
+      <path
+        d="M29,64 C42,56 55,42 66,28 L58,26 L73,23 L71,37 L65,31 C55,44 41,57 29,64 Z"
+        fill="url(#sarathiGrad)"
+      />
+
+      {/* Circuit lines */}
+      <line x1="56" y1="34" x2="74" y2="34" stroke="#0284C7" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="58" y1="39" x2="70" y2="39" stroke="#0284C7" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="56" y1="44" x2="77" y2="44" stroke="#0369A1" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Circle terminals */}
+      <circle cx="74" cy="34" r="1.5" fill="#38BDF8" stroke="#1E40AF" strokeWidth="0.5" />
+      <circle cx="70" cy="39" r="1.5" fill="#38BDF8" stroke="#1E40AF" strokeWidth="0.5" />
+      <circle cx="77" cy="44" r="1.5" fill="#38BDF8" stroke="#1E40AF" strokeWidth="0.5" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [appInitialized, setAppInitialized] = useState(false);
@@ -40,6 +81,35 @@ export default function App() {
   const [obCerts, setObCerts] = useState<string[]>([]);
   const [obJob, setObJob] = useState("");
   const [obDept, setObDept] = useState("");
+
+  // New Competency Dictionary and Assessment Engine states
+  const [onboardingStep, setOnboardingStep] = useState<"profile" | "test">("profile");
+  const [obRoles, setObRoles] = useState<any[]>([]);
+  const [onboardQuestions, setOnboardQuestions] = useState<any[]>([]);
+  const [obAnswers, setObAnswers] = useState<{ [qId: string]: number }>({});
+  const [testScore, setTestScore] = useState<number | null>(null);
+  const [testGrades, setTestGrades] = useState<any[]>([]);
+  const [selectedObRoleId, setSelectedObRoleId] = useState("");
+
+  useEffect(() => {
+    if (currentUser && !currentUser.profileCompleted) {
+      api.getRoles()
+        .then(roles => {
+          setObRoles(roles);
+          if (roles.length > 0) {
+            setSelectedObRoleId(roles[0].id);
+            setObJob(roles[0].roleName);
+          }
+        })
+        .catch(e => console.error("Failed to load roles", e));
+
+      api.getOnboardingQuestions()
+        .then(qs => {
+          setOnboardQuestions(qs);
+        })
+        .catch(e => console.error("Failed to load onboarding questions", e));
+    }
+  }, [currentUser]);
 
   const verifyTokenAndSession = async () => {
     const token = localStorage.getItem("sarathi_token");
@@ -126,12 +196,33 @@ export default function App() {
         specialties: obSpecialties,
         certificationCompleted: obCerts,
         jobTitle: actualJob,
-        department: actualDept
+        department: actualDept,
+        role: currentUser.role // maintain same role
       });
       localStorage.setItem("sarathi_token", data.token);
       setCurrentUser(data.user);
+      setOnboardingStep("test");
     } catch (err) {
       alert("Failed storing onboarding data.");
+    }
+  };
+
+  const handleOnboardingTestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    try {
+      const data = await api.submitOnboardingAnswers(obAnswers);
+      localStorage.setItem("sarathi_token", data.token);
+      setTestScore(data.score);
+      setTestGrades(data.graded);
+      // Wait a moment or let them proceed by updating currentUser
+      setCurrentUser(data.user);
+      // Set step back to profile for future registrations
+      setOnboardingStep("profile");
+    } catch (err: any) {
+      alert(err.message || "Failed to grade dynamic registration-test assessments.");
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -196,7 +287,7 @@ export default function App() {
             {[
               { role: "employee" as const, name: "Crew (Rajesh)", style: "bg-slate-800/80 text-sky-400 hover:bg-[#0284C7] hover:text-white border border-slate-700" },
               { role: "manager" as const, name: "Manager (Amitabh)", style: "bg-slate-800/80 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-slate-700" },
-              { role: "admin" as const, name: "L&D Admin (Siddharth)", style: "bg-slate-800/80 text-purple-400 hover:bg-purple-605 hover:text-white border border-slate-700" }
+              { role: "admin" as const, name: "VP & Director - L&D (Siddharth)", style: "bg-slate-800/80 text-purple-400 hover:bg-purple-600 hover:text-white border border-slate-700" }
             ].map((switcher) => (
               <button
                 key={switcher.role}
@@ -215,15 +306,17 @@ export default function App() {
         {/* FACTORY COCKPIT MAIN RAIL */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 danger-glow bg-[#38BDF8] flex items-center justify-center rounded-lg border border-[#38BDF8]/60 shadow-[#38BDF8]/20 shadow-md">
-              <Network className="w-5 h-5 text-slate-900" />
+            <div className="w-10 h-10 bg-white flex items-center justify-center rounded-xl border border-slate-200/20 shadow-sky-500/10 shadow-lg shrink-0">
+              <SarathiLogo className="w-8 h-8" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-lg font-black text-[#38BDF8] tracking-tighter leading-none">SARATHI AI</h1>
-                <span className="text-[9px] font-mono font-medium tracking-widest text-[#38BDF8] border border-sky-400/25 bg-[#38BDF8]/10 px-2 py-0.5 rounded leading-none">V2.4</span>
+                <h1 className="text-lg font-black text-[#50e4ff] tracking-tighter leading-none flex items-center gap-1">
+                  <span>sarathi</span>
+                  <span className="text-[#38BDF8]">ai</span>
+                </h1>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase leading-none block mt-1">Workforce Intelligence</span>
+              <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase leading-none block mt-1.5">Workforce Intelligence</span>
             </div>
           </div>
 
@@ -258,11 +351,11 @@ export default function App() {
           /* AUTH LOGIN SCREEN */
           <div className="max-w-md mx-auto bg-white border border-slate-200 p-6 rounded-lg space-y-6 mt-8 shadow-sm">
             <div className="text-center space-y-1.5">
-              <div className="w-12 h-12 bg-sky-50 text-sky-650 border border-sky-100 rounded-xl flex items-center justify-center mx-auto mb-2">
-                <Brain className="w-6 h-6 text-[#0284C7]" />
+              <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-md shadow-sky-500/5 border border-slate-100">
+                <SarathiLogo className="w-16 h-16" />
               </div>
-              <h2 className="text-xl font-sans font-extrabold text-slate-900 tracking-tight">Security Gateway Terminal</h2>
-              <p className="text-xs text-slate-500 font-sans px-3">Access Sarathi AI analytics nodes, safety training decks, and plant relationship graphs.</p>
+              <h2 className="text-xl font-sans font-extrabold text-slate-900 tracking-tight">Welcome to Sarathi AI</h2>
+              <p className="text-xs text-slate-500 font-sans px-3">Develop People. Preserve Knowledge. Measure Capability.</p>
             </div>
 
             {authError && (
@@ -317,9 +410,9 @@ export default function App() {
                       onChange={(e) => setRole(e.target.value as any)}
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs py-2.5 px-3 rounded mt-1.5 focus:outline-none"
                     >
-                      <option value="employee">Field Crew Specialist (Employee)</option>
-                      <option value="manager">Furnace Supervisor (Manager)</option>
-                      <option value="admin">Talent & L&D Admin (VP/Director)</option>
+                      <option value="employee">Employee</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">VP & Director - L&D</option>
                     </select>
                   </div>
                 </>
@@ -359,7 +452,7 @@ export default function App() {
                 ) : (
                   <>
                     <LogIn className="w-4 h-4" />
-                    <span>Compile Session Access</span>
+                    <span>{authView === "login" ? "Login" : "Register"}</span>
                   </>
                 )}
               </button>
@@ -371,130 +464,272 @@ export default function App() {
                 onClick={() => setAuthView(authView === "login" ? "register" : "login")}
                 className="text-[#0284C7] hover:text-[#0369A1] font-mono text-[10px] uppercase tracking-wide cursor-pointer font-bold"
               >
-                {authView === "login" ? "Create new plant specialist profile" : "Return to security terminal signature"}
+                {authView === "login" ? "New user? Register Now." : "Return to Home Page"}
               </button>
             </div>
           </div>
         ) : !currentUser.profileCompleted ? (
-          /* ONBOARDING FLOW PIPELINE SCREEN */
-          <div className="max-w-2xl mx-auto bg-white border border-slate-200 p-6 rounded-lg space-y-6 shadow-sm">
-            <div className="border-b border-slate-150 pb-3">
-              <h2 className="text-lg font-sans font-bold text-slate-900 flex items-center gap-2">
-                <UserCheck className="w-5.5 h-5.5 text-[#0284C7]" />
-                Specialist Onboarding Profile completion
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">Before entering work panels, the plant compliance standard requires registering your experience level and pre-existing core skills to seed initial ratings.</p>
-            </div>
-
-            <form onSubmit={handleOnboardingSubmit} className="space-y-4 text-xs">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          /* ONBOARDING FLOW PIPELINE SCREEN with STEP-1 Profile & STEP-2 Assessment */
+          onboardingStep === "profile" ? (
+            <div className="max-w-2xl mx-auto bg-white border border-slate-200 p-6 rounded-lg space-y-6 shadow-sm">
+              <div className="border-b border-slate-150 pb-3 flex justify-between items-center">
                 <div>
-                  <label className="font-mono text-[10px] text-slate-500 block uppercase">Industrial Title Designation:</label>
-                  <input
-                    type="text"
-                    required
-                    value={obJob}
-                    onChange={(e) => setObJob(e.target.value)}
-                    placeholder="Continuous Casting Specialist"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded mt-1.5 focus:outline-none focus:border-sky-500"
-                  />
+                  <h2 className="text-lg font-sans font-bold text-slate-900 flex items-center gap-2">
+                    <UserCheck className="w-5.5 h-5.5 text-[#0284C7]" />
+                    Specialist Onboarding Profile (Step 1 of 2)
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Before entering work panels, register your industrial division and experienced specialties.
+                  </p>
                 </div>
-                <div>
-                  <label className="font-mono text-[10px] text-slate-500 block uppercase">Department / Section:</label>
-                  <input
-                    type="text"
-                    required
-                    value={obDept}
-                    onChange={(e) => setObDept(e.target.value)}
-                    placeholder="Steel Melting Shop 2"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded mt-1.5 focus:outline-none focus:border-sky-500"
-                  />
+                <div className="text-right">
+                  <span className="font-mono text-[10px] text-slate-400 block uppercase">Language (भाषा)</span>
+                  <button
+                    onClick={() => setLang(lang === "en" ? "hi" : "en")}
+                    className="mt-1 font-mono text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded font-bold border border-slate-200"
+                  >
+                    {lang === "en" ? "हिन्दी (Hindi)" : "English"}
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <label className="font-mono text-[10px] text-slate-500 block uppercase">Prior Plant Experience (Years):</label>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <input
-                    type="range"
-                    min="0"
-                    max="30"
-                    value={obExp}
-                    onChange={(e) => setObExp(Number(e.target.value))}
-                    className="flex-1 accent-[#0284C7] bg-slate-200 h-2 rounded"
-                  />
-                  <span className="font-mono text-slate-800 bg-slate-50 border border-slate-200 px-3 py-1 font-bold text-xs rounded">{obExp} Years</span>
-                </div>
-              </div>
-
-              {/* Checkboxes parameters */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={handleOnboardingSubmit} className="space-y-4 text-xs">
                 
-                <div className="space-y-1.5">
-                  <label className="font-mono text-[10px] text-slate-500 block uppercase">Select active specialties:</label>
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded space-y-2 max-h-36 overflow-y-auto">
-                    {[
-                      "Ladle Metallurgy",
-                      "Gas Purging Diagnostics",
-                      "Tundish Flow Controls",
-                      "SCADA Interlocking",
-                      "Secondary Cooling",
-                      "Mechanical Alignment"
-                    ].map((spec) => (
-                      <button
-                        type="button"
-                        key={spec}
-                        onClick={() => toggleSpecialtySelection(spec)}
-                        className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between border ${
-                          obSpecialties.includes(spec) 
-                            ? "bg-sky-50 border-sky-400 text-[#0284C7] font-semibold" 
-                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                        }`}
-                      >
-                        <span>{spec}</span>
-                        {obSpecialties.includes(spec) && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="font-mono text-[10px] text-slate-500 block uppercase">Industrial Role Designation (पद):</label>
+                    <select
+                      value={selectedObRoleId}
+                      onChange={(e) => {
+                        setSelectedObRoleId(e.target.value);
+                        const found = obRoles.find(r => r.id === e.target.value);
+                        if (found) {
+                          setObJob(found.roleName);
+                        }
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2.5 rounded mt-1.5 focus:outline-none focus:border-sky-500"
+                    >
+                      <option value="">-- Custom / Other role --</option>
+                      {obRoles.map(r => (
+                        <option key={r.id} value={r.id}>{r.roleName}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="text"
+                      required
+                      value={obJob}
+                      onChange={(e) => setObJob(e.target.value)}
+                      placeholder="e.g. Continuous Casting Specialist"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded mt-2 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-mono text-[10px] text-slate-500 block uppercase">Department / Section (विभाग):</label>
+                    <input
+                      type="text"
+                      required
+                      value={obDept}
+                      onChange={(e) => setObDept(e.target.value)}
+                      placeholder="Steel Melting Shop 2"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2.5 rounded mt-1.5 focus:outline-none focus:border-sky-500"
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-mono text-[10px] text-slate-500 block uppercase">Previously completed certifications:</label>
-                  <div className="bg-slate-50 border border-slate-200 p-3 rounded space-y-2 max-h-36 overflow-y-auto">
-                    {[
-                      "Plant Safety Level I",
-                      "HAZOP Operations basic",
-                      "Mechanical calibration basics",
-                      "Level-2 automation certification"
-                    ].map((cert) => (
-                      <button
-                        type="button"
-                        key={cert}
-                        onClick={() => toggleCertSelection(cert)}
-                        className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between border ${
-                          obCerts.includes(cert) 
-                            ? "bg-sky-50 border-sky-400 text-[#0284C7] font-semibold" 
-                            : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                        }`}
-                      >
-                        <span>{cert}</span>
-                        {obCerts.includes(cert) && <Check className="w-3.5 h-3.5" />}
-                      </button>
-                    ))}
+                <div>
+                  <label className="font-mono text-[10px] text-slate-500 block uppercase">Prior Plant Experience (Years):</label>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={obExp}
+                      onChange={(e) => setObExp(Number(e.target.value))}
+                      className="flex-1 accent-[#0284C7] bg-slate-200 h-2 rounded"
+                    />
+                    <span className="font-mono text-slate-800 bg-slate-50 border border-slate-200 px-3 py-1 font-bold text-xs rounded">{obExp} Years</span>
                   </div>
                 </div>
 
+                {/* Checkboxes parameters */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  <div className="space-y-1.5">
+                    <label className="font-mono text-[10px] text-slate-500 block uppercase">Select active specialties:</label>
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded space-y-2 max-h-36 overflow-y-auto w-full">
+                      {[
+                        "Ladle Metallurgy",
+                        "Gas Purging Diagnostics",
+                        "Tundish Flow Controls",
+                        "SCADA Interlocking",
+                        "Secondary Cooling",
+                        "Mechanical Alignment"
+                      ].map((spec) => (
+                        <button
+                          type="button"
+                          key={spec}
+                          onClick={() => toggleSpecialtySelection(spec)}
+                          className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between border ${
+                            obSpecialties.includes(spec) 
+                              ? "bg-sky-50 border-sky-400 text-[#0284C7] font-semibold" 
+                              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span>{spec}</span>
+                          {obSpecialties.includes(spec) && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-mono text-[10px] text-slate-500 block uppercase">Previously completed certifications:</label>
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded space-y-2 max-h-36 overflow-y-auto w-full">
+                      {[
+                        "Plant Safety Level I",
+                        "HAZOP Operations basic",
+                        "Mechanical calibration basics",
+                        "Level-2 automation certification"
+                      ].map((cert) => (
+                        <button
+                          type="button"
+                          key={cert}
+                          onClick={() => toggleCertSelection(cert)}
+                          className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between border ${
+                            obCerts.includes(cert) 
+                              ? "bg-sky-50 border-sky-400 text-[#0284C7] font-semibold" 
+                              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          <span>{cert}</span>
+                          {obCerts.includes(cert) && <Check className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-4 bg-[#0284C7] hover:bg-[#0369A1] text-white font-sans font-bold py-2.5 text-xs rounded transition-colors uppercase tracking-wider cursor-pointer"
+                >
+                  Save Profile & Proceed to Onboarding Assessment ➔
+                </button>
+              </form>
+            </div>
+          ) : (
+            /* DYNAMIC BILINGUAL ASSESSMENT SYSTEM (STEP 2) */
+            <div className="max-w-2xl mx-auto bg-white border border-slate-200 p-6 rounded-lg space-y-6 shadow-sm">
+              <div className="border-b border-slate-150 pb-3 flex justify-between items-center">
+                <div>
+                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+                    Compliance Stage II
+                  </span>
+                  <h2 className="text-lg font-sans font-black text-slate-900 mt-2 flex items-center gap-2">
+                    <Brain className="w-5.5 h-5.5 text-[#0284C7]" />
+                    Skill & Safety Verification (कौशल एवं सुरक्षा मूल्यांकन)
+                  </h2>
+                </div>
+                <div>
+                  <button
+                    onClick={() => setLang(lang === "en" ? "hi" : "en")}
+                    className="font-mono text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded font-bold border border-slate-200"
+                  >
+                    {lang === "en" ? "हिन्दी (Hindi)" : "English"}
+                  </button>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full mt-4 bg-[#0284C7] hover:bg-[#0369A1] text-white font-sans font-bold py-2.5 text-xs rounded transition-colors uppercase tracking-wider"
-              >
-                Sign & Finalize Compliance Record
-              </button>
-            </form>
-          </div>
+              <div className="bg-slate-50 p-3 rounded border border-slate-150 text-slate-600 text-xs leading-relaxed">
+                <span className="font-bold block text-slate-800 mb-1">Onboarding Competency Evaluation:</span>
+                This test assesses technical skills, soft competencies, digital aptitude, and plant-level security. 
+                Answer below in simple Hindi or easy English as preferred. Passing seeds your verified skills!
+              </div>
+
+              <form onSubmit={handleOnboardingTestSubmit} className="space-y-6">
+                {onboardQuestions.map((q, idx) => {
+                  const hasHindi = !!q.questionTextHindi;
+                  const displayHindi = lang === "hi" && hasHindi;
+                  const qText = displayHindi ? q.questionTextHindi : q.questionText;
+                  const opts = displayHindi ? (q.optionsHindi || q.options) : q.options;
+
+                  return (
+                    <div key={q.id} className="border border-slate-150 p-4 rounded-lg space-y-3 bg-white hover:border-slate-300 transition-colors">
+                      <div className="flex items-start gap-2.5">
+                        <span className="font-mono text-[10px] text-slate-500 font-bold bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded mt-0.5">
+                          Q{idx + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-slate-800 leading-snug">{qText}</p>
+                          {hasHindi && lang === "en" && (
+                            <p className="text-[10px] text-slate-400 mt-0.5 mt-1 font-medium">{q.questionTextHindi}</p>
+                          )}
+                          {hasHindi && lang === "hi" && (
+                            <p className="text-[10px] text-slate-400 mt-0.5 mt-1 font-medium">({q.questionText})</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 pl-9">
+                        {opts.map((opt: string, optIdx: number) => {
+                          const isSelected = obAnswers[q.id] === optIdx;
+                          return (
+                            <button
+                              type="button"
+                              key={optIdx}
+                              onClick={() => setObAnswers(prev => ({ ...prev, [q.id]: optIdx }))}
+                              className={`w-full text-left p-2.5 rounded text-[11px] border transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected 
+                                  ? "bg-sky-50 border-sky-400 text-[#0284C7] font-semibold" 
+                                  : "bg-white border-slate-180 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              <span>{opt}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-[#0284C7]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="bg-sky-50 border border-sky-100 p-3.5 rounded text-slate-700 text-xs leading-relaxed flex gap-2">
+                  <Info className="w-5 h-5 flex-shrink-0 text-sky-600 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold mb-0.5">Assessment Grading Metric:</strong>
+                    Correct answers grant **Level 4 (Advanced)** in corresponding Skill models. Incorrect options grant **Level 2 (Basic)** to trigger learning paths. We will improve on future assessments!
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setOnboardingStep("profile")}
+                    className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded text-xs font-bold hover:bg-slate-50 uppercase tracking-wider cursor-pointer"
+                  >
+                    Back (पीछे जाएं)
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="flex-grow bg-[#0284C7] hover:bg-[#0369A1] disabled:opacity-50 text-white font-sans font-bold py-2.5 text-xs rounded transition-colors uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    {authLoading ? (
+                      <Clock className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <>
+                        <Award className="w-4.5 h-4.5" />
+                        <span>Submit Registration Assessment (परीक्षा सबमिट करें)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )
         ) : (
           /* WORKSPACE ACTIVE STATUS AND MAIN VIEWS SWITCHER BOARD */
           <div className="space-y-6">

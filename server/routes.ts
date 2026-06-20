@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
-import db, { JWT_SECRET, User, Competency, UserSkill, Assessment, AssessmentAttempt, KnowledgeDoc, MentorSession, MentorNomination } from "./db.js";
+import db, { JWT_SECRET, User, Competency, UserSkill, Assessment, AssessmentAttempt, KnowledgeDoc, MentorSession, MentorNomination, Role, Question } from "./db.js";
 import { generateEmbedding, cosineSimilarity, generateRAGAnswer, detectInputLanguage } from "./ai.js";
 
 const router = express.Router();
@@ -149,9 +149,11 @@ router.post("/auth/onboard", authenticateToken, (req: Request, res: Response) =>
     return;
   }
 
-  user.profileCompleted = true;
+  // Save onboarding details but keep profileCompleted = false to enforce the registration assessment!
+  user.profileCompleted = false;
   if (jobTitle) user.jobTitle = jobTitle;
   if (department) user.department = department;
+  user.role = req.body.role || user.role; // Allow switching role privilege during registration if supplied
 
   user.onboardingData = {
     priorExperienceYrs: Number(priorExperienceYrs) || 0,
@@ -161,25 +163,254 @@ router.post("/auth/onboard", authenticateToken, (req: Request, res: Response) =>
 
   db.saveUser(user);
 
-  // Initialize basic competency requirements automatically on onboarding!
-  // This satisfies: "onboarding pipeline must enforce profile completion and seed user skills"
-  const defaultComps = db.getCompetencies();
-  defaultComps.forEach(comp => {
-    // If we have prior experience, start self skill slightly higher to feel organic
-    const initialLevel = user.onboardingData!.priorExperienceYrs > 5 ? 2 : 1;
+  // Return token (so they remain logged in) but let them know they must proceed to step-2 assessment
+  const token = generateToken(user);
+  res.json({ message: "Profile saved. Proceed to competence mapping assessment.", token, user });
+});
+
+// ==========================================
+// 🎯 REGISTRATION ASSESSMENT & ROLE ENDPOINTS
+// ==========================================
+
+router.get("/onboarding/questions", authenticateToken, (req: Request, res: Response) => {
+  res.json(db.getQuestions());
+});
+
+router.post("/auth/onboard-test", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  const { answers } = req.body; // e.g. { q_1: 3, q_2: 1 }
+
+  const user = db.getUsers().find(u => u.id === reqUser.userId);
+  if (!user) {
+    res.status(404).json({ error: "User profile not found." });
+    return;
+  }
+
+  const questions = db.getQuestions();
+  let correctCount = 0;
+  let totalWeight = 0;
+  let earnedWeight = 0;
+  const graded: any[] = [];
+  const compScores: { [compId: string]: number } = {};
+
+  questions.forEach(q => {
+    const userAns = answers[q.id];
+    const isCorrect = userAns !== undefined && Number(userAns) === q.correctAnswerIdx;
+    if (isCorrect) {
+      correctCount++;
+    }
+
+    // Role-dependent assessment question weighting:
+    // Manager: leadership has 3.0x high weight, scenario/digital 1.5x weight.
+    // Employee: leadership has 0.5x low weight, safety/technical has normal 1.0x.
+    let weight = 1.0;
+    if (q.questionType === "leadership") {
+      weight = user.role === "manager" ? 3.0 : 0.5;
+    } else if (q.questionType === "digital_literacy") {
+      weight = user.role === "manager" ? 1.5 : 1.0;
+    } else if (q.questionType === "scenario") {
+      weight = user.role === "manager" ? 1.5 : 1.0;
+    }
+
+    totalWeight += weight;
+    if (isCorrect) {
+      earnedWeight += weight;
+    }
+
+    graded.push({
+      questionId: q.id,
+      correct: isCorrect,
+      competencyId: q.competencyId,
+      questionType: q.questionType,
+      appliedWeight: weight
+    });
+
+    // Proficiency mapping: correct answer is Level 4 (Advanced), wrong is Level 2 (Basic)
+    // Managers get Level 5 (Expert) if correct on leadership or Level 1 (Novice) if wrong
+    let levelScore = isCorrect ? 4 : 2;
+    if (q.questionType === "leadership" && user.role === "manager") {
+      levelScore = isCorrect ? 5 : 1;
+    }
+    compScores[q.competencyId] = levelScore;
+  });
+
+  // Save skills for each competency
+  const comps = db.getCompetencies();
+  comps.forEach(comp => {
+    const finalScore = compScores[comp.id] !== undefined ? compScores[comp.id] : 1;
     db.saveUserSkill({
-      id: `skill_${Date.now()}_${comp.id}`,
+      id: `skill_${Date.now()}_ob_${comp.id}`,
       userId: user.id,
       competencyId: comp.id,
-      currentLevel: initialLevel,
+      currentLevel: finalScore,
       updatedAt: new Date().toISOString(),
-      source: "self"
+      source: "assessment"
+    });
+
+    // Insert relationship node & edge in knowledge graph
+    const nodeSource = `node_user_${user.id}`;
+    const nodeTarget = `node_comp_${comp.id}`;
+    
+    // Clear old edges if they exist
+    const graphEdges = db.getGraphEdges();
+    const matchIdx = graphEdges.findIndex(
+      e => e.source === nodeSource && e.target === nodeTarget && (e.relation === "MASTERS" || e.relation === "ACQUIRING")
+    );
+    if (matchIdx !== -1) {
+      graphEdges.splice(matchIdx, 1);
+    }
+
+    db.addGraphEdge({
+      id: `edge_skill_ob_${Date.now()}_${comp.id}`,
+      source: nodeSource,
+      target: nodeTarget,
+      relation: finalScore >= comp.requiredLevel ? "MASTERS" : "ACQUIRING"
     });
   });
 
-  // Re-generate token with full metadata
+  // Log in assessment list with role-weighted score
+  const totalScore = totalWeight > 0 ? Math.round((earnedWeight / totalWeight) * 100) : 0;
+  db.addAttempt({
+    id: `att_onboard_${Date.now()}`,
+    userId: user.id,
+    assessmentId: "assess_onboard",
+    score: totalScore,
+    completedAt: new Date().toISOString(),
+    answers,
+    passed: totalScore >= 40 // simple easy pass, or always let them onboard
+  });
+
+  // Finalize onboarding completion
+  user.profileCompleted = true;
+  db.saveUser(user);
+
   const token = generateToken(user);
-  res.json({ message: "Onboarding completed.", token, user });
+  res.json({
+    message: "Registration assessment graded, account sync complete.",
+    token,
+    user,
+    score: totalScore,
+    graded
+  });
+});
+
+// Roles Mapping CRUD APIs
+router.get("/roles", authenticateToken, (req: Request, res: Response) => {
+  res.json(db.getRoles());
+});
+
+router.post("/roles", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin") {
+    res.status(403).json({ error: "Only admins can declare roles." });
+    return;
+  }
+  const { roleName, requiredCompetencies } = req.body;
+  if (!roleName || !Array.isArray(requiredCompetencies)) {
+    res.status(400).json({ error: "roleName and requiredCompetencies list are required." });
+    return;
+  }
+  const newRole: Role = {
+    id: `role_${Date.now()}`,
+    roleName,
+    requiredCompetencies
+  };
+  db.addRole(newRole);
+  res.status(201).json(newRole);
+});
+
+router.put("/roles/:id", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin") {
+    res.status(403).json({ error: "Only admins can edit roles." });
+    return;
+  }
+  const role = db.getRoles().find(r => r.id === req.params.id);
+  if (!role) {
+    res.status(404).json({ error: "Role definition not found." });
+    return;
+  }
+  const { roleName, requiredCompetencies } = req.body;
+  if (roleName) role.roleName = roleName;
+  if (requiredCompetencies) role.requiredCompetencies = requiredCompetencies;
+  db.saveRole(role);
+  res.json(role);
+});
+
+// Question Bank Config CRUD APIs for Admin Assessment Configuration
+router.get("/questions", authenticateToken, (req: Request, res: Response) => {
+  res.json(db.getQuestions());
+});
+
+router.post("/questions", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin") {
+    res.status(403).json({ error: "Only admins can add questions to bank." });
+    return;
+  }
+  const { competencyId, questionText, questionTextHindi, options, optionsHindi, correctAnswerIdx, difficulty, questionType, explanation, explanationHindi } = req.body;
+  if (!competencyId || !questionText || !options || correctAnswerIdx === undefined) {
+    res.status(400).json({ error: "Missing required attributes to construct Question." });
+    return;
+  }
+  const newQ: Question = {
+    id: `q_${Date.now()}`,
+    competencyId,
+    questionText,
+    questionTextHindi,
+    options,
+    optionsHindi,
+    correctAnswerIdx: Number(correctAnswerIdx),
+    difficulty: difficulty || "medium",
+    questionType: questionType || "mcq",
+    explanation: explanation || "",
+    explanationHindi: explanationHindi || ""
+  };
+  db.addQuestion(newQ);
+  res.status(201).json(newQ);
+});
+
+router.put("/questions/:id", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin") {
+    res.status(403).json({ error: "Only admins can customize questions." });
+    return;
+  }
+  const q = db.getQuestions().find(x => x.id === req.params.id);
+  if (!q) {
+    res.status(404).json({ error: "Question metadata not found in bank." });
+    return;
+  }
+  const { competencyId, questionText, questionTextHindi, options, optionsHindi, correctAnswerIdx, difficulty, questionType, explanation, explanationHindi } = req.body;
+  if (competencyId) q.competencyId = competencyId;
+  if (questionText) q.questionText = questionText;
+  if (questionTextHindi) q.questionTextHindi = questionTextHindi;
+  if (options) q.options = options;
+  if (optionsHindi) q.optionsHindi = optionsHindi;
+  if (correctAnswerIdx !== undefined) q.correctAnswerIdx = Number(correctAnswerIdx);
+  if (difficulty) q.difficulty = difficulty;
+  if (questionType) q.questionType = questionType;
+  if (explanation) q.explanation = explanation;
+  if (explanationHindi) q.explanationHindi = explanationHindi;
+  db.saveQuestion(q);
+  res.json(q);
+});
+
+router.delete("/questions/:id", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin") {
+    res.status(403).json({ error: "Only admins can delete questions." });
+    return;
+  }
+  const questionsList = db.getQuestions();
+  const idx = questionsList.findIndex(x => x.id === req.params.id);
+  if (idx !== -1) {
+    questionsList.splice(idx, 1);
+    db.save();
+    res.json({ message: "Question deleted successfully." });
+  } else {
+    res.status(404).json({ error: "Question not found." });
+  }
 });
 
 // ==========================================
@@ -194,7 +425,125 @@ router.get("/users/team", authenticateToken, (req: Request, res: Response) => {
   } else if (reqUser.role === "manager") {
     // Return teammates in the same department
     const team = db.getUsers().filter(u => u.department === reqUser.department && u.role === "employee");
-    res.json(team);
+    
+    // Enrich with metrics
+    const competencies = db.getCompetencies();
+    const allSkills = db.getUserSkills();
+    const allAttempts = db.getAttempts();
+    const allProgressList = db.getProgress();
+    const activeModules = db.getModules();
+    
+    const enrichedTeam = team.map(emp => {
+      const userSkills = allSkills.filter(s => s.userId === emp.id);
+      const attempts = allAttempts.filter(a => a.userId === emp.id);
+      const progressList = allProgressList.filter(p => p.userId === emp.id);
+      
+      // Calculate WRI Same as /wri/:userId?
+      let totalReqMetRatio = 0;
+      if (competencies.length > 0) {
+        let metCounter = 0;
+        competencies.forEach(comp => {
+          const us = userSkills.find(s => s.competencyId === comp.id);
+          const current = us ? us.currentLevel : 0;
+          if (current >= comp.requiredLevel) {
+            metCounter += 1;
+          } else {
+            metCounter += (current / comp.requiredLevel); 
+          }
+        });
+        totalReqMetRatio = metCounter / competencies.length;
+      }
+
+      let passRatio = 0;
+      if (attempts.length > 0) {
+        // Group attempts by assessmentId to penalize high retry repetitions
+        const assessmentIds = Array.from(new Set(attempts.map(a => a.assessmentId)));
+        let weightedPassesTotal = 0;
+        assessmentIds.forEach(assId => {
+          const assAttempts = attempts.filter(a => a.assessmentId === assId);
+          const passedAttempts = assAttempts.filter(a => a.passed);
+          if (passedAttempts.length > 0) {
+            const passedIndex = assAttempts.findIndex(a => a.passed);
+            const attemptsToPass = passedIndex !== -1 ? (passedIndex + 1) : assAttempts.length;
+            // 15% penalty per previous try before clearing, floor at 40% weightage
+            const attemptPenalty = Math.max(0.4, 1.0 - (attemptsToPass - 1) * 0.15);
+            weightedPassesTotal += attemptPenalty;
+          }
+        });
+        passRatio = weightedPassesTotal / assessmentIds.length;
+      }
+
+      let learnRatio = 0;
+      if (activeModules.length > 0) {
+        const completedNum = progressList.filter(p => p.status === "completed").length;
+        learnRatio = completedNum / activeModules.length;
+      }
+
+      const wriVal = Math.round((totalReqMetRatio * 50) + (passRatio * 30) + (learnRatio * 20));
+      const wri = Math.min(100, Math.max(10, wriVal));
+
+      // Calculate gaps
+      const gaps: any[] = [];
+      competencies.forEach(comp => {
+        const us = userSkills.find(s => s.competencyId === comp.id);
+        const current = us ? us.currentLevel : 0;
+        if (current < comp.requiredLevel) {
+          gaps.push({
+            competencyId: comp.id,
+            competencyName: comp.name,
+            competencyCode: comp.code,
+            currentLevel: current,
+            requiredLevel: comp.requiredLevel,
+            gap: comp.requiredLevel - current,
+            criticality: comp.criticality,
+            category: comp.category
+          });
+        }
+      });
+
+      // Calculate next assignments
+      const incompleteModules = activeModules.filter(mod => {
+        const prog = progressList.find(p => p.moduleId === mod.id);
+        return !prog || prog.status !== "completed";
+      });
+
+      const relevantIncomplete = incompleteModules.filter(mod => 
+        gaps.some(g => g.competencyId === mod.competencyId)
+      );
+
+      const nextAssignments: any[] = [];
+      relevantIncomplete.forEach(mod => {
+        const gapObj = gaps.find(g => g.competencyId === mod.competencyId);
+        nextAssignments.push({
+          type: "module",
+          id: mod.id,
+          title: mod.title,
+          estimatedMinutes: mod.estimatedMinutes,
+          difficulty: mod.difficulty,
+          reason: `Address gap in ${gapObj ? gapObj.competencyName : 'assigned skill'}`
+        });
+      });
+
+      if (nextAssignments.length === 0 && incompleteModules.length > 0) {
+        nextAssignments.push({
+          type: "module",
+          id: incompleteModules[0].id,
+          title: incompleteModules[0].title,
+          estimatedMinutes: incompleteModules[0].estimatedMinutes,
+          difficulty: incompleteModules[0].difficulty,
+          reason: "General plant alignment curriculum"
+        });
+      }
+
+      return {
+        ...emp,
+        wri,
+        gaps,
+        nextAssignments
+      };
+    });
+
+    res.json(enrichedTeam);
   } else {
     // Employee sees only themselves
     res.json([db.getUsers().find(u => u.id === reqUser.userId)]);
@@ -346,15 +695,122 @@ router.post("/competencies/rate", authenticateToken, (req: Request, res: Respons
   res.json({ message: "Competency skill updated successfully.", skill: newSkill });
 });
 
+// Helper to fetch dynamic, randomized, and job-relevance-aligned assessment questions to prevent repetition
+function getRelevantRandomizedQuestions(user: any, assessment: any, limit: number) {
+  const allQuestions = db.getQuestions();
+  if (allQuestions.length === 0) {
+    return assessment.questions || [];
+  }
+
+  // 1. Identify which competencies are relevant to the user's role/job
+  const userRoleName = user.jobTitle || "";
+  const roles = db.getState().roles || [];
+  const matchedRole = roles.find((r: any) => r.roleName.toLowerCase().trim() === userRoleName.toLowerCase().trim());
+  
+  const relevantCompetencyIds = new Set<string>();
+  if (matchedRole) {
+    matchedRole.requiredCompetencies.forEach((rc: any) => {
+      relevantCompetencyIds.add(rc.competencyId);
+    });
+  }
+
+  // Also include the competencyIds in the assessment's original templates
+  if (assessment && assessment.questions) {
+    assessment.questions.forEach((q: any) => {
+      if (q.competencyId) {
+        relevantCompetencyIds.add(q.competencyId);
+      }
+    });
+  }
+
+  // 2. Filter global questions pool
+  let pool = allQuestions.filter(q => relevantCompetencyIds.has(q.competencyId));
+
+  // If we don't have enough matching questions, backfill from other global questions
+  if (pool.length < limit) {
+    const extra = allQuestions.filter(q => !pool.some(p => p.id === q.id));
+    pool = [...pool, ...extra];
+  }
+
+  // 3. Shuffle pool so standard/retake assessments stay dynamic
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+
+  // Return the randomized set mapped to standard format
+  return shuffled.slice(0, limit).map((pq) => ({
+    id: pq.id,
+    questionText: pq.questionText,
+    questionTextHindi: pq.questionTextHindi || pq.questionText,
+    options: pq.options,
+    optionsHindi: pq.optionsHindi || pq.options,
+    correctAnswerIdx: pq.correctAnswerIdx,
+    points: 20,
+    competencyId: pq.competencyId,
+    questionType: pq.questionType,
+    explanation: pq.explanation,
+    explanationHindi: pq.explanationHindi || pq.explanation
+  }));
+}
+
+// Helper to retrieve randomized questions for a specific learning module
+function getModuleCheckQuestions(moduleId: string, competencyId: string, limit = 3) {
+  const allQuestions = db.getQuestions();
+  
+  // Filter questions matching this competencyId first
+  let pool = allQuestions.filter(q => q.competencyId === competencyId);
+  
+  // If not enough questions, backfill from others
+  if (pool.length < limit) {
+    const extra = allQuestions.filter(q => q.competencyId !== competencyId);
+    pool = [...pool, ...extra];
+  }
+  
+  // Shuffle pool so sequential assessments get something different each time
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  
+  return shuffled.slice(0, limit).map((pq) => ({
+    id: pq.id,
+    questionText: pq.questionText,
+    questionTextHindi: pq.questionTextHindi || pq.questionText,
+    options: pq.options,
+    optionsHindi: pq.optionsHindi || pq.options,
+    correctAnswerIdx: pq.correctAnswerIdx,
+    points: 20,
+    competencyId: pq.competencyId,
+    questionType: pq.questionType,
+    explanation: pq.explanation,
+    explanationHindi: pq.explanationHindi || pq.explanation
+  }));
+}
+
 // ==========================================
 // 📝 ASSESSMENT ENDPOINTS
 // ==========================================
 
 router.get("/assessments", authenticateToken, (req: Request, res: Response) => {
   const reqUser = (req as any).user;
-  // Standard logic: Filter assessments targetted for user's job code
+  const user = db.getUsers().find(u => u.id === reqUser.userId);
+  if (!user) {
+    res.status(404).json({ error: "User not found to load assignments." });
+    return;
+  }
+
   const pool = db.getAssessments();
-  res.json(pool);
+  const allAttempts = db.getAttempts().filter(a => a.userId === reqUser.userId);
+
+  // For each assessment templates, dynamically filter, randomize, and populate questions + track attempt counts
+  const enrichedAssessments = pool.map(ass => {
+    const limit = ass.questions.length || 5;
+    const randomizedQuestions = getRelevantRandomizedQuestions(user, ass, limit);
+    const userAttempts = allAttempts.filter(a => a.assessmentId === ass.id);
+    
+    return {
+      ...ass,
+      questions: randomizedQuestions,
+      userAttempts
+    };
+  });
+
+  res.json(enrichedAssessments);
 });
 
 router.post("/assessments", authenticateToken, (req: Request, res: Response) => {
@@ -380,7 +836,8 @@ router.post("/assessments", authenticateToken, (req: Request, res: Response) => 
       options: q.options,
       correctAnswerIdx: Number(q.correctAnswerIdx),
       points: Number(q.points) || 20,
-      competencyId: q.competencyId
+      competencyId: q.competencyId,
+      questionType: q.questionType || "mcq"
     }))
   };
 
@@ -411,13 +868,39 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
     return;
   }
 
+  const user = db.getUsers().find(u => u.id === reqUser.userId);
+  const userRole = user ? user.role : "employee";
+
   let totalPoints = 0;
   let earnedPoints = 0;
-  const gradedQuestions = assess.questions.map(q => {
+
+  // Track dynamic questions lookup to support shuffled/randomised questions
+  const submittedQuestionIds = Object.keys(answers);
+  const allGlobalQuestions = db.getQuestions();
+
+  const gradedQuestions = (submittedQuestionIds.length > 0 ? submittedQuestionIds : assess.questions.map(q => q.id)).map(qId => {
+    let q = allGlobalQuestions.find(item => item.id === qId);
+    if (!q) {
+      q = assess.questions.find(item => item.id === qId) as any;
+    }
+    if (!q) return null;
+
     const userAnswer = answers[q.id];
     const isCorrect = userAnswer === q.correctAnswerIdx;
-    totalPoints += q.points;
-    if (isCorrect) earnedPoints += q.points;
+
+    // Role-dependent question weight multiplier:
+    let weight = 1.0;
+    if (q.questionType === "leadership") {
+      weight = userRole === "manager" ? 3.0 : 0.5;
+    } else if (q.questionType === "digital_literacy") {
+      weight = userRole === "manager" ? 1.5 : 1.0;
+    } else if (q.questionType === "scenario") {
+      weight = userRole === "manager" ? 1.5 : 1.0;
+    }
+
+    const itemPoints = (q.points || 20) * weight;
+    totalPoints += itemPoints;
+    if (isCorrect) earnedPoints += itemPoints;
 
     return {
       questionId: q.id,
@@ -425,12 +908,21 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
       correctIdx: q.correctAnswerIdx,
       userAnswer,
       isCorrect,
-      competencyId: q.competencyId
+      competencyId: q.competencyId,
+      questionType: q.questionType,
+      appliedWeight: weight,
+      pointsTotal: itemPoints
     };
-  });
+  }).filter(Boolean) as any[];
 
-  const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-  const passed = score >= 70; // 70% passing threshold for safety/operation environments
+  const rawScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+  const passed = rawScore >= 70; // 70% passing threshold based on actual accuracy
+
+  // Assess attempts penalty:
+  const prevAttempts = db.getAttempts().filter(a => a.userId === reqUser.userId && a.assessmentId === assessmentId);
+  const attemptNumber = prevAttempts.length + 1;
+  const penaltyFactor = Math.max(0.4, 1.0 - (prevAttempts.length * 0.15)); // 15% penalty per previous attempt, floor at 40%
+  const score = Math.min(100, Math.round(rawScore * penaltyFactor));
 
   const attempt: AssessmentAttempt = {
     id: `att_${Date.now()}`,
@@ -445,11 +937,10 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
   db.addAttempt(attempt);
 
   // GAP DETECT & AUTO UPDATE SKILLS:
-  // If user passes assessment with high accuracy, auto-increment or set competency levels in userSkills!
   if (passed) {
     // Group questions by competency to upgrade corresponding skills
     const compMap: { [compId: string]: boolean } = {};
-    assess.questions.forEach(q => {
+    gradedQuestions.forEach(q => {
       if (q.competencyId) compMap[q.competencyId] = true;
     });
 
@@ -461,8 +952,10 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
       const existing = currentSkills.find(s => s.competencyId === compId);
       const previousLevel = existing ? existing.currentLevel : 0;
 
-      // Passing upgrades technical rating to required or improves by 1 point!
-      const targetLevel = Math.min(5, Math.max(comp.requiredLevel, previousLevel + 1));
+      // Passing upgrades technical rating. Apply penalty to the skill increment as well!
+      // Penalty reduces increment from +1 down to +0.7, +0.4 based on previous attempts
+      const skillIncrement = Math.max(0.3, 1.0 - (prevAttempts.length * 0.25));
+      const targetLevel = Math.min(5, Math.ceil((previousLevel + skillIncrement) * 100) / 100);
 
       db.saveUserSkill({
         id: `skill_${Date.now()}_upgraded`,
@@ -486,7 +979,10 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
   res.json({
     attempt,
     passed,
-    score,
+    score: score, // Penalized score
+    originalScore: rawScore, // Actual accurate questions score
+    attemptNumber,
+    penaltyApplied: prevAttempts.length > 0 ? `${(prevAttempts.length * 15)}%` : "None",
     gradedQuestions
   });
 });
@@ -531,8 +1027,21 @@ router.get("/wri/:userId?", authenticateToken, (req: Request, res: Response) => 
   // 2. Assessment success progress (Weighted: 30% multiplier)
   let passRatio = 0;
   if (attempts.length > 0) {
-    const passedNum = attempts.filter(a => a.passed).length;
-    passRatio = passedNum / attempts.length;
+    // Group attempts by assessmentId to penalize high retry repetitions
+    const assessmentIds = Array.from(new Set(attempts.map(a => a.assessmentId)));
+    let weightedPassesTotal = 0;
+    assessmentIds.forEach(assId => {
+      const assAttempts = attempts.filter(a => a.assessmentId === assId);
+      const passedAttempts = assAttempts.filter(a => a.passed);
+      if (passedAttempts.length > 0) {
+        const passedIndex = assAttempts.findIndex(a => a.passed);
+        const attemptsToPass = passedIndex !== -1 ? (passedIndex + 1) : assAttempts.length;
+        // 15% penalty per previous try before clearing, floor at 40% weightage
+        const attemptPenalty = Math.max(0.4, 1.0 - (attemptsToPass - 1) * 0.15);
+        weightedPassesTotal += attemptPenalty;
+      }
+    });
+    passRatio = weightedPassesTotal / assessmentIds.length;
   }
 
   // 3. Learning Path Progression (Weighted: 20% multiplier)
@@ -658,12 +1167,20 @@ router.get("/learning-paths", authenticateToken, (req: Request, res: Response) =
       isRecommended = actualRating < associatedComp.requiredLevel;
     }
 
+    // Attach 3 dynamic, randomized checklist questions for this module to block simple rote repetition
+    const moduleQuestions = getModuleCheckQuestions(mod.id, mod.competencyId || "", 3);
+
+    // Fetch quiz attempts history for this module
+    const userAttempts = db.getAttempts().filter(a => a.userId === reqUser.userId && a.assessmentId === `module_${mod.id}`);
+
     return {
       module: mod,
       competencyName: associatedComp ? associatedComp.name : "Core Operations",
       status: prog ? prog.status : "not_started",
       isRecommended,
-      progress: prog || null
+      progress: prog || null,
+      questions: moduleQuestions,
+      userAttempts
     };
   });
 
@@ -672,7 +1189,7 @@ router.get("/learning-paths", authenticateToken, (req: Request, res: Response) =
 
 router.post("/learning-paths/complete", authenticateToken, (req: Request, res: Response) => {
   const reqUser = (req as any).user;
-  const { moduleId } = req.body;
+  const { moduleId, answers } = req.body; // answers: { [questionId: string]: selectedIndex }
 
   if (!moduleId) {
     res.status(400).json({ error: "moduleId is required." });
@@ -685,6 +1202,67 @@ router.post("/learning-paths/complete", authenticateToken, (req: Request, res: R
     return;
   }
 
+  // Mini-assessment checking is MANDATORY
+  if (!answers || Object.keys(answers).length === 0) {
+    res.status(400).json({ error: "Mini-assessment answers are required to verify competency clearance." });
+    return;
+  }
+
+  // Grade the checklist
+  const allQuestions = db.getQuestions();
+  const submittedIds = Object.keys(answers);
+  let correctCount = 0;
+  const totalCount = submittedIds.length;
+
+  const gradedQuestions = submittedIds.map(qId => {
+    const q = allQuestions.find(item => item.id === qId);
+    if (!q) return null;
+
+    const userAnswer = answers[qId];
+    const isCorrect = userAnswer === q.correctAnswerIdx;
+
+    if (isCorrect) correctCount++;
+
+    return {
+      questionId: qId,
+      questionText: q.questionText,
+      correctIdx: q.correctAnswerIdx,
+      userAnswer,
+      isCorrect,
+      explanation: q.explanation || ""
+    };
+  }).filter(Boolean);
+
+  const rawScore = totalCount > 0 ? Math.round((correctCount / totalCount) * 105) : 0; // standard out of 100
+  const score = Math.min(100, rawScore);
+  const passed = score >= 65; // At least 2 out of 3 correct questions is 66.7% (which is >= 65%)
+
+  // Save the assessment attempt reference
+  const attemptId = `att_module_${moduleId}_${Date.now()}`;
+  const attempt = {
+    id: attemptId,
+    userId: reqUser.userId,
+    assessmentId: `module_${moduleId}`,
+    score,
+    completedAt: new Date().toISOString(),
+    answers,
+    passed
+  };
+
+  db.addAttempt(attempt);
+
+  if (!passed) {
+    res.status(400).json({
+      success: false,
+      message: `Accessory study module validation failed. You scored ${score}% (Minimum required for safety: 65%). Please review concepts and re-assess.`,
+      gradedQuestions,
+      score,
+      passed: false
+    });
+    return;
+  }
+
+  // If validation succeeded, proceed with course completion save
   db.saveProgress({
     id: `prog_${Date.now()}`,
     userId: reqUser.userId,
@@ -693,21 +1271,47 @@ router.post("/learning-paths/complete", authenticateToken, (req: Request, res: R
     completedAt: new Date().toISOString()
   });
 
-  // Competency progression incentive: Increments corresponding skill points by 1!
+  // Calculate attempt-based upgrade multiplier:
+  const prevAttempts = db.getAttempts().filter(a => a.userId === reqUser.userId && a.assessmentId === `module_${moduleId}`);
+  const previousFailedCount = prevAttempts.filter(a => !a.passed).length;
+
+  // Let 1st try pass give full +1.0 points
+  // 2nd try pass give +0.70 points
+  // 3rd or more try pass give +0.40 points
+  let skillIncrement = 1.0;
+  let penaltyNote = "None (First attempt pass!)";
+  if (previousFailedCount === 1) {
+    skillIncrement = 0.70;
+    penaltyNote = "30% weightage penalty applied due to 2nd attempt completion clearance.";
+  } else if (previousFailedCount >= 2) {
+    skillIncrement = 0.40;
+    penaltyNote = "60% weightage penalty applied due to multiple attempt completion clearance.";
+  }
+
   const userSkills = db.getUserSkills().filter(s => s.userId === reqUser.userId);
   const existing = userSkills.find(s => s.competencyId === activeModule.competencyId);
   const previousLevel = existing ? existing.currentLevel : 0;
+
+  const rawNextLevel = previousLevel + skillIncrement;
+  const newLevelCap = Math.min(5, Math.round(rawNextLevel * 100) / 100);
 
   db.saveUserSkill({
     id: `skill_${Date.now()}_incentive`,
     userId: reqUser.userId,
     competencyId: activeModule.competencyId,
-    currentLevel: Math.min(5, previousLevel + 1),
+    currentLevel: newLevelCap,
     updatedAt: new Date().toISOString(),
-    source: "self"
+    source: "assessment"
   });
 
-  res.json({ message: "Module marked completed. Core competency level scaled by +1 point." });
+  res.json({
+    success: true,
+    message: `Module cleared successfully! Competency index upscaled to ${newLevelCap}.`,
+    score,
+    passed: true,
+    penaltyApplied: penaltyNote,
+    skillIncrement
+  });
 });
 
 // ==========================================

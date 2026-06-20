@@ -10,6 +10,7 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
 }) {
   const t = translations[lang];
   const [competencies, setCompetencies] = useState<any[]>([]);
+  const [activeSubPage, setActiveSubPage] = useState<"skills" | "assessments" | "library" | "mappings">("skills");
   
   // Create Competency State
   const [compCode, setCompCode] = useState("");
@@ -36,10 +37,26 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
   const [docTagsString, setDocTagsString] = useState("");
   const [docSuccess, setDocSuccess] = useState("");
 
+  // Roles & Skill Maps Configuration states
+  const [rolesList, setRolesList] = useState<any[]>([]);
+  const [selectedRoleForMapping, setSelectedRoleForMapping] = useState<any | null>(null);
+  const [selectedCompsForRole, setSelectedCompsForRole] = useState<{ [compId: string]: number }>({});
+  const [newRoleName, setNewRoleName] = useState("");
+
+  const loadRolesData = async () => {
+    try {
+      const list = await api.getRoles();
+      setRolesList(list);
+    } catch (e) {
+      console.error("Failed to load roles in admin:", e);
+    }
+  };
+
   const loadAdminData = async () => {
     try {
       const list = await api.getCompetencies();
       setCompetencies(list);
+      await loadRolesData();
     } catch (e) {
       console.error("Failed to load admin competencies:", e);
     }
@@ -166,10 +183,85 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      
-      {/* Competencies Declarator form (Left column) */}
-      <div className="lg:col-span-4 space-y-6">
+    <div className="space-y-6">
+      {/* VP & Director of L&D Portal Heading */}
+      <div className="bg-[#0F172A] rounded-xl border border-slate-800 p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <span className="text-[9px] font-mono font-extrabold uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded">
+              L&D Command Center
+            </span>
+          </div>
+          <h2 className="text-xl font-black tracking-tight text-white mt-1.5 sm:text-2xl">
+            VP & Director – Learning & Development Dashboard
+          </h2>
+          <p className="text-xs text-slate-400 max-w-2xl mt-1">
+            Configure dynamic baseline competency criteria, build multi-question certifications, index standard operating procedures with Gemini RAG, and define baseline role matrices.
+          </p>
+        </div>
+        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 text-right">
+          <span className="text-[10px] font-mono text-slate-400 block uppercase">PRIVILEGE MODE</span>
+          <span className="text-xs font-bold font-sans text-purple-400 block mt-0.5">Enterprise Admin & Planner</span>
+        </div>
+      </div>
+
+      {/* SUB-PAGES ATTACHED / NAVIGATION TABS */}
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-px">
+        <button
+          type="button"
+          onClick={() => setActiveSubPage("skills")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold font-sans border-b-2 transition-all cursor-pointer ${
+            activeSubPage === "skills"
+              ? "border-purple-600 text-purple-600 font-extrabold"
+              : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+          }`}
+        >
+          <Award className={`w-4 h-4 ${activeSubPage === "skills" ? "text-purple-600" : "text-slate-400"}`} />
+          <span>{lang === "hi" ? "कार्य कौशल निर्देशिका" : "Skills & Competencies Directory"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubPage("assessments")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold font-sans border-b-2 transition-all cursor-pointer ${
+            activeSubPage === "assessments"
+              ? "border-purple-600 text-purple-600 font-extrabold"
+              : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+          }`}
+        >
+          <PlusCircle className={`w-4 h-4 ${activeSubPage === "assessments" ? "text-purple-600" : "text-slate-400"}`} />
+          <span>{lang === "hi" ? "परीक्षा संकलक मॉड्यूल" : "Examinations Compiler"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubPage("library")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold font-sans border-b-2 transition-all cursor-pointer ${
+            activeSubPage === "library"
+              ? "border-purple-600 text-purple-600 font-extrabold"
+              : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+          }`}
+        >
+          <FileText className={`w-4 h-4 ${activeSubPage === "library" ? "text-purple-600" : "text-slate-400"}`} />
+          <span>{lang === "hi" ? "मानक संचलन प्रक्रिया" : "SOP & Knowledge Library"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubPage("mappings")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold font-sans border-b-2 transition-all cursor-pointer ${
+            activeSubPage === "mappings"
+              ? "border-purple-600 text-purple-600 font-extrabold"
+              : "border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300"
+          }`}
+        >
+          <Award className={`w-4 h-4 ${activeSubPage === "mappings" ? "text-purple-600" : "text-slate-400"}`} />
+          <span>{lang === "hi" ? "भूमिका योग्यता मैट्रिक्स" : "Role Matrix Planner"}</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-6">
+        
+        {/* Competencies Declarator form (Left column) */}
+        <div className={`lg:col-span-5 space-y-6 ${activeSubPage === "skills" ? "" : "hidden"}`}>
         
         <form onSubmit={handleCreateCompetency} className="bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm">
           <div className="border-b border-slate-200 pb-2">
@@ -277,11 +369,49 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
 
       </div>
 
+      {/* Active Competencies Inventory List (Right column) */}
+      <div className={`lg:col-span-7 ${activeSubPage === "skills" ? "" : "hidden"}`}>
+        <div className="bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm h-full flex flex-col">
+          <div className="border-b border-slate-200 pb-2">
+            <span className="font-mono text-[9px] text-[#64748B] block uppercase font-bold tracking-wider">Active Inventory</span>
+            <h4 className="text-xs font-sans font-bold text-[#1E293B] mt-0.5">Declared Competency Nodes in Graph</h4>
+          </div>
+          <div className="space-y-2.5 overflow-y-auto max-h-[480px] pr-1 flex-1">
+            {competencies.map(comp => (
+              <div key={comp.id} className="border border-slate-200 hover:border-slate-300 transition-all rounded-lg p-3.5 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-xs shadow-xs">
+                <div className="space-y-1.5 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] bg-slate-200 text-slate-850 font-extrabold px-2 py-0.5 rounded border border-slate-300">
+                      {comp.code}
+                    </span>
+                    <span className="font-sans font-bold text-slate-900 text-xs">{comp.name}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed font-sans">{comp.description}</p>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="text-[9px] font-mono bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200 font-bold">
+                      Baseline: Level {comp.requiredLevel}
+                    </span>
+                    <span className="text-[9px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200 font-bold">
+                      {comp.category}
+                    </span>
+                    <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold border ${
+                      comp.criticality === "high" ? "bg-rose-50 border-rose-200 text-rose-700" : "bg-amber-50 border-amber-200 text-amber-700"
+                    }`}>
+                      {comp.criticality.toUpperCase()} RISK
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Dynamic Assessments Compiler & SOP Uploader (Right columns) */}
-      <div className="lg:col-span-8 space-y-6">
+      <div className={`lg:col-span-12 space-y-6 ${activeSubPage === "assessments" || activeSubPage === "library" ? "" : "hidden"}`}>
         
         {/* ASSESSMENTS COMPILER */}
-        <form onSubmit={handleCreateAssessment} className="bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm">
+        <form onSubmit={handleCreateAssessment} className={`bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm ${activeSubPage === "assessments" ? "" : "hidden"}`}>
           <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
             <div>
               <h3 className="text-sm font-sans font-extrabold text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
@@ -418,7 +548,7 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
         </form>
 
         {/* SOP MANUAL UPLOADER */}
-        <form onSubmit={handleUploadSOP} className="bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm">
+        <form onSubmit={handleUploadSOP} className={`bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm ${activeSubPage === "library" ? "" : "hidden"}`}>
           <div className="border-b border-slate-200 pb-2">
             <h3 className="text-sm font-sans font-extrabold text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
               <Upload className="w-5 h-5 text-[#0284C7]" />
@@ -529,6 +659,170 @@ export default function DashboardAdmin({ lang = "en", userProfile, onRefreshStat
 
       </div>
 
+      {/* ROLE COMPETENCY DICTIONARY MAPS (Fully Integrated UI) */}
+      <div className={`col-span-12 space-y-6 ${activeSubPage === "mappings" ? "" : "hidden"}`}>
+        <div className="bg-white border border-slate-200 p-5 rounded-lg space-y-4 shadow-sm">
+          <div className="border-b border-slate-200 pb-2">
+            <h3 className="text-sm font-sans font-extrabold text-slate-800 uppercase tracking-widest flex items-center gap-1.5">
+              <Award className="w-5 h-5 text-[#0284C7]" />
+              {lang === "hi" ? "पद और कौशल मैपिंग प्रबंधन (Roles & Skill Maps)" : "Roles & Target Competency Mappings Dictionary"}
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Define, edit and delete baseline competency mappings and target proficiency levels (Levels 1 to 5) for plant-level designations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Left selector card list */}
+            <div className="border border-slate-200 rounded-md p-3.5 space-y-2 max-h-96 overflow-y-auto bg-slate-50/50">
+              <span className="font-mono text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Industrial Job Roles</span>
+              {rolesList.map(role => (
+                <button
+                  type="button"
+                  key={role.id}
+                  onClick={() => {
+                    setSelectedRoleForMapping(role);
+                    const mapped: { [key: string]: number } = {};
+                    role.requiredCompetencies.forEach((rc: any) => {
+                      mapped[rc.competencyId] = rc.targetLevel;
+                    });
+                    setSelectedCompsForRole(mapped);
+                  }}
+                  className={`w-full text-left p-2 rounded text-xs font-sans font-semibold border transition-all flex justify-between items-center cursor-pointer ${
+                    selectedRoleForMapping?.id === role.id 
+                      ? "bg-sky-50 border-[#0284C7] text-[#0284C7] ring-1 ring-sky-300" 
+                      : "bg-white border-slate-200 text-slate-700 hover:border-slate-350"
+                  }`}
+                >
+                  <span>{role.roleName}</span>
+                  <span className="font-mono text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                    {role.requiredCompetencies.length} skills
+                  </span>
+                </button>
+              ))}
+
+              <div className="pt-3 border-t border-slate-200 mt-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="New Job role name..."
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 text-xs px-2.5 py-1.5 rounded focus:outline-none focus:border-sky-500"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newRoleName) return;
+                    try {
+                      const res = await api.createRole({ roleName: newRoleName, requiredCompetencies: [] });
+                      setNewRoleName("");
+                      await loadRolesData();
+                      setSelectedRoleForMapping(res);
+                      setSelectedCompsForRole({});
+                    } catch (e) {
+                      alert("Failed to initialize role definition.");
+                    }
+                  }}
+                  className="w-full bg-[#0284C7] hover:bg-[#0369A1] text-white text-[10px] font-bold py-1.5 uppercase rounded tracking-wider cursor-pointer font-mono"
+                >
+                  + Spawn New Designation
+                </button>
+              </div>
+            </div>
+
+            {/* Right configuration panel details */}
+            <div className="md:col-span-2 border border-slate-200 rounded-md p-3.5 space-y-3 bg-white">
+              {selectedRoleForMapping ? (
+                <>
+                  <div className="flex justify-between items-center border-b border-slate-150 pb-2">
+                    <div>
+                      <span className="text-[9px] font-mono text-slate-400 block uppercase font-bold tracking-wider">CONFIGURE REQUIRED PROFICIENCIES FOR:</span>
+                      <h4 className="text-xs font-sans font-bold text-slate-800 mt-0.5">{selectedRoleForMapping.roleName}</h4>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                    {competencies.map(comp => {
+                      const currentVal = selectedCompsForRole[comp.id] || 0;
+                      return (
+                        <div key={comp.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-100 pb-2 text-[11px]">
+                          <div className="max-w-md">
+                            <span className="font-mono text-[9px] bg-slate-150 text-slate-600 rounded px-1.5 py-0.5">{comp.code}</span>
+                            <span className="text-xs font-sans font-semibold text-slate-800 ml-2">{comp.name}</span>
+                            <span className="text-[10px] text-slate-500 block leading-tight mt-0.5">{comp.description}</span>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-start sm:self-center">
+                            <span className="text-[9px] font-mono text-slate-400">Target Level:</span>
+                            <select
+                              value={currentVal}
+                              onChange={(e) => {
+                                const level = Number(e.target.value);
+                                setSelectedCompsForRole(prev => {
+                                  const updated = { ...prev };
+                                  if (level === 0) {
+                                    delete updated[comp.id];
+                                  } else {
+                                    updated[comp.id] = level;
+                                  }
+                                  return updated;
+                                });
+                              }}
+                              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded py-1 px-1.5 focus:outline-none"
+                            >
+                              <option value="0">Not Required</option>
+                              <option value="1">Level 1 - Novice</option>
+                              <option value="2">Level 2 - Beginner</option>
+                              <option value="3">Level 3 - Competent</option>
+                              <option value="4">Level 4 - Advanced</option>
+                              <option value="5">Level 5 - Expert</option>
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const reqComps = Object.keys(selectedCompsForRole).map(compId => ({
+                            competencyId: compId,
+                            targetLevel: selectedCompsForRole[compId]
+                          }));
+                          await api.updateRole(selectedRoleForMapping.id, {
+                            requiredCompetencies: reqComps
+                          });
+                          await loadRolesData();
+                          onRefreshState();
+                          alert("Designation proficiency rules saved successfully!");
+                        } catch (e) {
+                          alert("Failed to save changes.");
+                        }
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-sans font-bold py-1.5 px-4 rounded uppercase tracking-wider cursor-pointer shadow-sm transition-colors"
+                    >
+                      Save Mapping Layout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col justify-center items-center text-slate-400 py-16 text-center space-y-2">
+                  <Award className="w-8 h-8 text-slate-300" />
+                  <span className="text-xs font-sans font-semibold">Select a designated job role from list to calibrate target competencies.</span>
+                  <p className="text-[10px] max-w-xs text-slate-500 leading-normal">Configured mappings dynamically set workforce requirements for WRI and individual training agendas.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
     </div>
   );
 }
