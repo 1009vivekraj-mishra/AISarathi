@@ -201,7 +201,11 @@ export default function App() {
       });
       localStorage.setItem("sarathi_token", data.token);
       setCurrentUser(data.user);
-      setOnboardingStep("test");
+      if (data.user.profileCompleted) {
+        setOnboardingStep("profile");
+      } else {
+        setOnboardingStep("test");
+      }
     } catch (err) {
       alert("Failed storing onboarding data.");
     }
@@ -287,7 +291,7 @@ export default function App() {
             {[
               { role: "employee" as const, name: "Crew (Rajesh)", style: "bg-slate-800/80 text-sky-400 hover:bg-[#0284C7] hover:text-white border border-slate-700" },
               { role: "manager" as const, name: "Manager (Amitabh)", style: "bg-slate-800/80 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-slate-700" },
-              { role: "admin" as const, name: "VP & Director - L&D (Siddharth)", style: "bg-slate-800/80 text-purple-400 hover:bg-purple-600 hover:text-white border border-slate-700" }
+              { role: "admin" as const, name: "Leadership (Siddharth)", style: "bg-slate-800/80 text-purple-400 hover:bg-purple-600 hover:text-white border border-slate-700" }
             ].map((switcher) => (
               <button
                 key={switcher.role}
@@ -412,7 +416,7 @@ export default function App() {
                     >
                       <option value="employee">Employee</option>
                       <option value="manager">Manager</option>
-                      <option value="admin">VP & Director - L&D</option>
+                      <option value="admin">Leadership</option>
                     </select>
                   </div>
                 </>
@@ -476,7 +480,7 @@ export default function App() {
                 <div>
                   <h2 className="text-lg font-sans font-bold text-slate-900 flex items-center gap-2">
                     <UserCheck className="w-5.5 h-5.5 text-[#0284C7]" />
-                    Specialist Onboarding Profile (Step 1 of 2)
+                    {currentUser?.role === "admin" ? "Leadership Onboarding Profile" : "Specialist Onboarding Profile (Step 1 of 2)"}
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
                     Before entering work panels, register your industrial division and experienced specialties.
@@ -615,7 +619,7 @@ export default function App() {
                   type="submit"
                   className="w-full mt-4 bg-[#0284C7] hover:bg-[#0369A1] text-white font-sans font-bold py-2.5 text-xs rounded transition-colors uppercase tracking-wider cursor-pointer"
                 >
-                  Save Profile & Proceed to Onboarding Assessment ➔
+                  {currentUser?.role === "admin" ? "Save Profile & Enter Dashboard ➔" : "Save Profile & Proceed to Onboarding Assessment ➔"}
                 </button>
               </form>
             </div>
@@ -722,7 +726,11 @@ export default function App() {
                     ) : (
                       <>
                         <Award className="w-4.5 h-4.5" />
-                        <span>Submit Registration Assessment (परीक्षा सबमिट करें)</span>
+                        <span>
+                          {lang === "en" 
+                            ? `Submit (${Object.keys(obAnswers).length}/${onboardQuestions.length} Answered)` 
+                            : `सबमिट करें (${Object.keys(obAnswers).length}/${onboardQuestions.length} उत्तरित)`}
+                        </span>
                       </>
                     )}
                   </button>

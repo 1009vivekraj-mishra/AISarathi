@@ -27,6 +27,214 @@ interface Edge {
   relation: string;
 }
 
+const GAP_DATA: {
+  [compId: string]: {
+    explanation: string;
+    pdfUrl: string;
+    pdfName: string;
+    externalLinks: { name: string; url: string; type: string }[];
+    expertSuggestion: string;
+    questions: {
+      id: string;
+      questionText: string;
+      options: string[];
+      correctOptionIdx: number;
+    }[];
+  }
+} = {
+  comp_1: {
+    explanation: "This critical behavioral gap means you are not fully certified under plant standard operating procedures to handle emergency gas leaks independently, check localized CO level monitors, or supervise safety evacuations. This leaves the plant at higher risk during furnace or ladle operations.",
+    pdfUrl: "https://www.cdc.gov/niosh/docs/77-229/pdfs/77-229.pdf?id=10.26616/NIOSHPUB77229",
+    pdfName: "NIOSH Molten Metal Industrial Health & Safety Guide.pdf",
+    externalLinks: [
+      { name: "OSHA Steel Industry Safety Standards", url: "https://www.osha.gov/steel-industry", type: "Standard Portal" },
+      { name: "OSHA Foundry Hazards Directive Booklet", url: "https://www.osha.gov/sites/default/files/publications/osha3284.pdf", type: "Official PDF Handbook" },
+      { name: "HSE Molten Slag Heat Advisory", url: "https://www.hse.gov.uk/moltenslag/", type: "Academia Portal" }
+    ],
+    expertSuggestion: "Expert Suggestion from Siddharth Sen (VP of Talent): 'Focus on mastering active sensor trip thresholds. Remember that CO level triggers at 100 ppm demand instant plant evac warnings. Study the upwind beacon directions carefully.'",
+    questions: [
+      {
+        id: "saf_1",
+        questionText: "At what carbon monoxide (CO) concentration level must a plant worker immediately trigger a localized evacuation protocol?",
+        options: ["15 ppm", "35 ppm", "100 ppm or above", "5 ppm"],
+        correctOptionIdx: 2
+      },
+      {
+        id: "saf_2",
+        questionText: "Which safety area is designated for assemblers during a toxic gas emergency at SMS-2?",
+        options: ["Downwind holding area", "Upwind designated assembly beacon zone", "Inside the mechanical maintenance cabin", "The basement pump station"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "saf_3",
+        questionText: "What is the standard frequency of auditing localized gas detectors under OSHA guidelines?",
+        options: ["Every 2 years", "Once during annual turnaround", "At the start of every single shifts segment", "Only after a system-wide failure"],
+        correctOptionIdx: 2
+      }
+    ]
+  },
+  comp_2: {
+    explanation: "This technical casting gap impairs your ability to manage emergency tundish shut-offs or adjust mould oscillation speeds under extreme thermal load. This causes increased probability of alloy breakouts and casting structural tears.",
+    pdfUrl: "https://www.nist.gov/system/files/documents/2017/05/24/p251-2.pdf",
+    pdfName: "NIST Metallurgical Structural Steel Casting Handbook.pdf",
+    externalLinks: [
+      { name: "Steeluniversity Continuous Casting Simulation", url: "https://steeluniversity.org/course/continuous-casting/", type: "E-Learning Simulation" },
+      { name: "American Iron and Steel Institute (AISI) Portal", url: "https://www.steel.org/", type: "Industry Standard" },
+      { name: "HSE UK Machinery Mould Safety Guidelines", url: "https://www.hse.gov.uk/moltenslag/", type: "Regulatory Portal" }
+    ],
+    expertSuggestion: "Expert Suggestion from Amitabh Banerjee (Blast Furnace Group Manager): 'Review mould heat dissipation thermocouple logs. When thermal spikes manifest, it's a mold powder dry fault and require immediate shroud alignments adjustment.'",
+    questions: [
+      {
+        id: "cst_1",
+        questionText: "What is the prime critical symptom of a mold powder failure during molten steel casting operations?",
+        options: ["Slab thickness increases linearly", "Sudden thermal spikes on thermocouple sensors inside mould walls", "Slag density drops below water density", "SCADA pump temperature cools down"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "cst_2",
+        questionText: "What action is required if tundish nozzle shroud cracks are detected during continuous casting?",
+        options: ["Increase casting mold vibration speed", "Trigger immediate gas purging flow and replace the damaged shroud", "Ignore until continuous cast is finished", "Increase nozzle immersion depth"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "cst_3",
+        questionText: "In continuous casting, mold level fluctuations must be constrained to what maximum range to prevent steel breakouts?",
+        options: ["±20 mm", "±2 mm to ±5 mm", "±50 mm", "±100 mm"],
+        correctOptionIdx: 1
+      }
+    ]
+  },
+  comp_3: {
+    explanation: "This high-criticality metallurgical gap prevents you from diagnosing pearlite crystallization faults or designing stress-free cooling flow curves, which leads to internal micro-crack defects in cast slab products.",
+    pdfUrl: "https://www.nist.gov/system/files/documents/2017/05/24/p251-2.pdf",
+    pdfName: "NIST Mechanical Phase Crystallization Standards.pdf",
+    externalLinks: [
+      { name: "Steeluniversity Metallurgy Interactive Guide", url: "https://steeluniversity.org/", type: "Interactive Platform" },
+      { name: "NIST Structural Steel Science Guide", url: "https://www.nist.gov/", type: "Science Library" },
+      { name: "ASME Codes & Standards Metallurgy Guides", url: "https://www.asme.org/codes-standards", type: "Certification Portal" }
+    ],
+    expertSuggestion: "Expert Suggestion from Rajesh Kumar (Continuous Casting Specialist): 'Cooling flow parameters are delicate. Always calculate carbon equivalent ratios first before selecting the spray cooling rates, to avoid cracking.'",
+    questions: [
+      {
+        id: "phy_1",
+        questionText: "Which microstructural phase is desired for high-strength steel grades after accelerated cooling of slabs?",
+        options: ["Coarse pearlite grain matrix", "Fine-grain bainite or martensite phase", "As-cast dendritic sulfur clusters", "Excess pro-eutectoid cementite networks"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "phy_2",
+        questionText: "How does an excessive spray cooling rate affect slab quality down-line?",
+        options: ["Improves interior chemical homogeneity", "Causes surface and corner micro-cracking due to high thermal stresses", "Generates high elongation rates", "Eliminates scale entirely"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "phy_3",
+        questionText: "What does a high Carbon Equivalent (CE) index signify in structural steel processing?",
+        options: ["Lower susceptibility to cold cracking and simpler pre-heating", "Higher risk of weld-zone cold cracking requiring controlled pre-heats", "Enhanced thermodynamic elasticity of continuous molten metal", "Absolute resistance to phase transition"],
+        correctOptionIdx: 1
+      }
+    ]
+  },
+  comp_4: {
+    explanation: "This preventive wear gap affects your ability to align strand roll gaps or inspect hydraulic seal nodes. Untreated friction wear issues on segments will produce slab deformation faults under casting load.",
+    pdfUrl: "https://www.nist.gov/system/files/documents/2017/05/24/p251-2.pdf",
+    pdfName: "Heavy Machinery Roller Wear Calibration Procedures.pdf",
+    externalLinks: [
+      { name: "OSHA Steel Industry Hydraulic Safety Rules", url: "https://www.osha.gov/steel-industry", type: "Regulatory Rules" },
+      { name: "American Welding Society Maintenance Guidelines", url: "https://www.steel.org/", type: "Industry Code" },
+      { name: "ASME Professional Engineering Maintenance Portal", url: "https://www.asme.org/codes-standards", type: "Engineering Standards" }
+    ],
+    expertSuggestion: "Expert Suggestion from Amitabh Banerjee (Blast Furnace Group Manager): 'Never start segment shifts without verifying the roll gap parameters with the electro-mechanical loop checker. A simple Vernier calliper is insufficient.'",
+    questions: [
+      {
+        id: "mnt_1",
+        questionText: "What tool is utilized to calibrate the caster roller segment alignment values?",
+        options: ["Simple vernier callipers", "Electro-mechanical roll gap checker and laser tracker", "Regular level chalk lines", "A standard torque dial wrench"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "mnt_2",
+        questionText: "How should a worn or torn high-pressure hydraulic seal in segment 2 be managed?",
+        options: ["Double the pressurized fluid stream", "Clean, depressurize the auxiliary line, and replace the seal nodes immediately", "Seal with high-temperature epoxy on surface", "Leave it until standard winter inspection"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "mnt_3",
+        questionText: "What is the typical consequence of a misalignment in the strand guiding roller segment?",
+        options: ["Increased slag separation", "Bulging and non-uniform shell thickness with high internal stresses", "Decreased mold oscillation frequency", "High carbon dilution levels"],
+        correctOptionIdx: 1
+      }
+    ]
+  },
+  comp_5: {
+    explanation: "This SCADA automation gap indicates gaps in troubleshooting level-2 plant automation telemetry or overriding PLC interlocking triggers, adding delay when safety overrides are demanded.",
+    pdfUrl: "https://www.cdc.gov/niosh/docs/77-229/pdfs/77-229.pdf?id=10.26616/NIOSHPUB77229",
+    pdfName: "ANSI Standard PLC Automation Interlocking Manual.pdf",
+    externalLinks: [
+      { name: "OSHA Electronic Control and Automation Safety Compliance", url: "https://www.osha.gov/steel-industry", type: "Standard Portal" },
+      { name: "IEEE Industrial SCADA Safety Overwrite Guides", url: "https://www.steel.org/", type: "Technical Guild" }
+    ],
+    expertSuggestion: "Expert Suggestion from Siddharth Sen (VP of Talent): 'If the Level 2 SCADA communication breaks, do not sit on manual. Check the local PLC panel immediately and verify that interlocks remain operational.'",
+    questions: [
+      {
+        id: "scd_1",
+        questionText: "What is the correct protocol when a 'Red Level 2 PLC Communication Loss' alarm rings?",
+        options: ["Mute and wait for auto-reconnection", "Verify physically at control cabinet, switch to manual backup controls if needed", "Reboot the SCADA master console directly", "Increase casting speed to outrun system sync delay"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "scd_2",
+        questionText: "What does a safety interlock bypass flag on heat logs signify?",
+        options: ["The system is running on green backup networks", "Core mechanical triggers are decoupled and manual overrides are active", "Thermal heat loss is reduced by 15%", "Process automation data has successfully synced"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "scd_3",
+        questionText: "A SCADA analog signal drift can be corrected by doing what?",
+        options: ["Lowering the operator screen brightness", "Recalibrating field transceivers and trimming 4-20mA loop signals", "Increasing raw heat logs databases size", "Changing the network IP gateway address"],
+        correctOptionIdx: 1
+      }
+    ]
+  },
+  comp_prc_mng: {
+    explanation: "This functional planning gap impairs your ability to balance furnace hot melt delivery speeds alongside ladle chemistry timelines, which impacts the continuous cast sequence.",
+    pdfUrl: "https://www.cdc.gov/niosh/docs/77-229/pdfs/77-229.pdf?id=10.26616/NIOSHPUB77229",
+    pdfName: "Modern Steelwork Logistics & Material Flow Manual.pdf",
+    externalLinks: [
+      { name: "AISI Steel Operations Logistics Resource Library", url: "https://www.steel.org/", type: "Industry Standard" },
+      { name: "Steeluniversity Molten Metallurgy Logistics Hub", url: "https://steeluniversity.org/", type: "Academic Course" }
+    ],
+    expertSuggestion: "Expert Suggestion from Amitabh Banerjee (Blast Furnace Group Manager): 'Flow control matches ladle timings. Check active heats status and pre-schedule emergency tapping cycles to prevent caster turnaround freeze.'",
+    questions: [
+      {
+        id: "prc_1",
+        questionText: "In steel plant flow control, what is ladle 'cold heat' and how is it resolved?",
+        options: ["Ladle temperature matches ideal grade; no action", "Molten temperature is too low; dispatch to LF (Ladle Furnace) for reheating", "Cooling water spray has frozen; use blowtorches", "Slab crystallization rate is too high; slow down caster"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "prc_2",
+        questionText: "What is the critical objective of balancing molten logistics between blast furnace and SMS?",
+        options: ["Allow ladles to cool down for easier transport", "Ensure a continuous hot-metal buffer to prevent caster turnaround delays or delays in furnace tapping", "Reduce the amount of slag generated", "Maintain high levels of carbon steel impurities"],
+        correctOptionIdx: 1
+      },
+      {
+        id: "prc_3",
+        questionText: "Which flow control tool optimizes continuous caster throughput bottlenecking?",
+        options: ["Dynamic ladle casting timeline buffer planning", "Reducing casting strand thickness below 50mm", "Shutting down the electromagnetic mold stirrer", "Tapping the furnace 5 times per hour"],
+        correctOptionIdx: 0
+      }
+    ]
+  }
+};
+
+interface Edge {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+}
+
 export default function DashboardEmployee({ lang = "en", userProfile, onRefreshState }: { 
   lang?: "en" | "hi";
   userProfile: any; 
@@ -44,10 +252,22 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
   const [mentorsInfo, setMentorsInfo] = useState<any>(null);
   const [sessionLogs, setSessionLogs] = useState<any[]>([]);
   
+  // Custom HawkEye & Pension Wisdom States
+  const [ldInbox, setLdInbox] = useState<any[]>([]);
+  const [ldInboxLoading, setLdInboxLoading] = useState(false);
+  const [wisdomRequests, setWisdomRequests] = useState<any[]>([]);
+  const [wisdomAnswers, setWisdomAnswers] = useState<{ [qId: string]: number }>({});
+  const [wisdomSuccessMsg, setWisdomSuccessMsg] = useState("");
+  const [activeWisdomQuest, setActiveWisdomQuest] = useState<any>(null);
+
   // Interaction/Modals state
   const [activeAssessment, setActiveAssessment] = useState<any>(null);
   const [userAnswers, setUserAnswers] = useState<{ [qId: string]: number }>({});
   const [assessmentResult, setAssessmentResult] = useState<any>(null);
+
+  // Module checkoff assessment states
+  const [activeModuleQuizAnswers, setActiveModuleQuizAnswers] = useState<{ [moduleId: string]: { [qId: string]: number } }>({});
+  const [quizResults, setQuizResults] = useState<{ [moduleId: string]: any }>({});
 
   // Self nomination state
   const [selectedCompForNom, setSelectedCompForNom] = useState("");
@@ -67,6 +287,84 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
   const [chatLoading, setChatLoading] = useState(false);
   const [chatSources, setChatSources] = useState<{ title: string; type: string }[]>([]);
   const [aiEngine, setAiEngine] = useState<"gemini" | "groq">("groq");
+
+  // Gap Reassessment states
+  const [reassessmentCompId, setReassessmentCompId] = useState<string | null>(null);
+  const [reassessmentAnswers, setReassessmentAnswers] = useState<{ [qId: string]: number }>({});
+  const [reassessmentResult, setReassessmentResult] = useState<{ success: boolean; score: number; message: string } | null>(null);
+
+  const handleReassessmentSubmit = async (compId: string, requiredLevel: number) => {
+    const data = GAP_DATA[compId] || GAP_DATA["comp_1"];
+    let correctCount = 0;
+    data.questions.forEach((q) => {
+      if (reassessmentAnswers[q.id] === q.correctOptionIdx) {
+        correctCount++;
+      }
+    });
+
+    const passed = correctCount === data.questions.length;
+    const score = Math.round((correctCount / data.questions.length) * 100);
+
+    if (passed) {
+      try {
+        await api.rateCompetency({ competencyId: compId, rating: requiredLevel });
+        setReassessmentResult({
+          success: true,
+          score,
+          message: "🎉 Outstanding! You answered all assessment questions correctly (100% accuracy). The critical safety/operational gap is now certified as CLOSED. Your competency level has been elevated, and the plant WRI rating has updated!"
+        });
+        // Clear cached answers
+        setReassessmentAnswers({});
+        // Reload all metrics & notify parent state
+        loadEmployeeData();
+        onRefreshState();
+      } catch (err: any) {
+        setReassessmentResult({
+          success: false,
+          score,
+          message: `Passed the questionnaire, but failed to record the updated matrix on server: ${err.message || err}`
+        });
+      }
+    } else {
+      setReassessmentResult({
+        success: false,
+        score,
+        message: `❌ Assessment Failed. You scored ${score}% (requires 100%). To protect operating safety, SMS personnel must understand all standards perfectly. Please review the official PDF guides and external standards before retrying.`
+      });
+    }
+  };
+
+  const loadLDInformation = async () => {
+    try {
+      setLdInboxLoading(true);
+      const inbox = await api.getLDInbox();
+      setLdInbox(inbox);
+      const reqs = await api.getLDRetirementMyRequests();
+      setWisdomRequests(reqs);
+    } catch (e) {
+      console.error("Failed loading transition/inbox prompts", e);
+    } finally {
+      setLdInboxLoading(false);
+    }
+  };
+
+  const handleWisdomSubmit = async (assessmentId: string) => {
+    try {
+      await api.submitLDRetirementWisdom({
+        assessmentId,
+        answers: wisdomAnswers
+      });
+      setWisdomSuccessMsg("✓ Succession Wisdom Capsule submitted successfully! Auto-generated standard operating procedures published to RAG network.");
+      setWisdomAnswers({});
+      setActiveWisdomQuest(null);
+      loadLDInformation();
+      loadEmployeeData();
+      onRefreshState();
+      setTimeout(() => setWisdomSuccessMsg(""), 6000);
+    } catch (err: any) {
+      alert(err.message || "Failed to catalog experience wisdom.");
+    }
+  };
 
   // Search Knowledge Hub state
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,6 +416,7 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
 
   useEffect(() => {
     loadEmployeeData();
+    loadLDInformation();
   }, [userProfile, activeTab]);
 
   // Force Directed Spring Physics loop for interactive Knowledge Graph
@@ -214,11 +513,40 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
   // On learning path completion click
   const handleMarkModuleComplete = async (moduleId: string) => {
     try {
-      await api.completeLearningModule(moduleId);
+      const answers = activeModuleQuizAnswers[moduleId] || {};
+      const res = await api.completeLearningModule(moduleId, answers);
+      
+      setQuizResults(prev => ({
+        ...prev,
+        [moduleId]: {
+          success: true,
+          message: res.message || "Module cleared successfully!",
+          score: res.score,
+          passed: true,
+          penaltyApplied: res.penaltyApplied,
+          skillIncrement: res.skillIncrement
+        }
+      }));
+
+      // Clear answers for this successfully completed module
+      setActiveModuleQuizAnswers(prev => {
+        const copy = { ...prev };
+        delete copy[moduleId];
+        return copy;
+      });
+
       loadEmployeeData();
       onRefreshState();
-    } catch (err) {
-      alert("Error complete path");
+    } catch (err: any) {
+      setQuizResults(prev => ({
+        ...prev,
+        [moduleId]: {
+          success: false,
+          message: err.message || "Failed to mark module completed. Ensure you scored at least 65% on the checklist validation quiz.",
+          passed: false,
+          score: 0
+        }
+      }));
     }
   };
 
@@ -405,6 +733,128 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
               <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 text-xs font-mono rounded">ID: {userProfile.userId || userProfile.id}</span>
             </div>
 
+            {/* L&D HawkEye Connect Directives Panel */}
+            {ldInbox && ldInbox.length > 0 && (
+              <div className="bg-[#0284C7]/5 border border-[#0284C7]/20 rounded-xl p-4 space-y-3 shadow-3xs">
+                <div className="flex items-center gap-2 border-b border-[#0284C7]/10 pb-2">
+                  <Sparkles className="w-4 h-4 text-[#0284C7] animate-pulse" />
+                  <span className="font-mono text-[10px] font-bold text-[#0284C7] uppercase tracking-wider">⚡ L&amp;D HawkEye Active Interventions</span>
+                </div>
+                <div className="space-y-2.5">
+                  {ldInbox.map((msg: any) => (
+                    <div key={msg.id} className="bg-white border border-slate-150 rounded-lg p-3 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 uppercase font-mono text-[9px] bg-purple-50 text-purple-750 px-1.5 py-0.5 rounded border border-purple-150">
+                            Directive: {msg.type}
+                          </span>
+                          <span className="text-[10px] text-slate-450 font-mono">From: {msg.senderName}</span>
+                        </div>
+                        <p className="text-slate-700 italic font-medium leading-relaxed font-sans mt-1">"{msg.message}"</p>
+                      </div>
+
+                      {msg.type === "assign" && msg.assignedModuleId && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("paths")}
+                          className="bg-[#0284C7] hover:bg-[#0369A1] text-white font-mono font-bold text-[10px] py-1.5 px-3 rounded cursor-pointer shrink-0 transition-colors"
+                        >
+                          📚 Open Training Paths &rarr;
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Elder Transition Retirement Wisdom Capture Card */}
+            {wisdomRequests && wisdomRequests.length > 0 && (
+              <div className="bg-purple-50/50 border border-purple-200 rounded-xl p-6 space-y-4 shadow-3xs">
+                <div className="flex items-start gap-3">
+                  <div className="bg-purple-600 text-white p-2.5 text-xs rounded-lg font-bold uppercase shrink-0">
+                    👴 Elder
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[9px] font-mono bg-purple-150 text-purple-800 font-bold px-2 py-0.5 rounded border border-purple-200 uppercase">Transition Wisdom Capsule</span>
+                    <h3 className="text-sm font-sans font-black text-slate-850 mt-1.5">Submit Transition Wisdom before step down</h3>
+                    <p className="text-xs text-slate-650 mt-1">
+                      Our L&amp;D team has assigned critical knowledge-capture validations for you. Answer as verifiably as possible. 
+                      Your troubleshooting guidelines will be integrated as searchable SOP manuals.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {wisdomRequests.map((req: any) => {
+                    const activeQuiz = activeWisdomQuest === req.id;
+                    return (
+                      <div key={req.id} className="border border-purple-150 bg-white p-4 rounded-xl space-y-3">
+                        <div className="flex justify-between items-center text-xs">
+                          <h4 className="font-bold text-slate-900">{req.title}</h4>
+                          <button
+                            type="button"
+                            onClick={() => setActiveWisdomQuest(activeQuiz ? null : req.id)}
+                            className="text-purple-650 hover:text-purple-800 font-bold text-[11px] font-mono cursor-pointer"
+                          >
+                            {activeQuiz ? "[ Collapse Assessment ]" : "[ Begin Legacy Capture Exam ]"}
+                          </button>
+                        </div>
+
+                        {activeQuiz && (
+                          <div className="space-y-4 pt-3 border-t border-purple-100 text-xs text-slate-705">
+                            {req.questions.map((q: any, qIdx: number) => (
+                              <div key={qIdx} className="space-y-2.5">
+                                <p className="font-semibold text-slate-850 font-sans">{qIdx + 1}. {q.questionText}</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {q.options.map((opt: string, optIdx: number) => {
+                                    const selected = wisdomAnswers[qIdx] === optIdx;
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={optIdx}
+                                        onClick={() => {
+                                          setWisdomAnswers(prev => ({
+                                            ...prev,
+                                            [qIdx]: optIdx
+                                          }));
+                                        }}
+                                        className={`p-2.5 text-left rounded border transition-all cursor-pointer ${
+                                          selected
+                                            ? "bg-purple-50 border-purple-400 text-purple-705 font-bold"
+                                            : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-white"
+                                        }`}
+                                      >
+                                        <span className="font-mono text-[10px] mr-1.5">[{String.fromCharCode(65 + optIdx)}]</span> {opt}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+
+                            {wisdomSuccessMsg && (
+                              <p className="text-[11px] text-emerald-600 font-sans font-semibold text-center bg-emerald-50 border border-emerald-150 p-2 rounded">{wisdomSuccessMsg}</p>
+                            )}
+
+                            <div className="flex justify-end pt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleWisdomSubmit(req.id)}
+                                className="bg-purple-600 hover:bg-purple-550 text-white font-mono font-bold text-xs py-2 px-5 rounded uppercase tracking-wider cursor-pointer shadow-xs"
+                              >
+                                Submit Wisdom to SOP Pipeline &rarr;
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* WRI Multi-gauge Block */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-50 border border-slate-200 p-4 rounded-md">
@@ -517,6 +967,183 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
                       </div>
                     </div>
                   </div>
+
+                  {/* ⚡ GAP DIAGNOSTIC, REFERENCES & REASSESSMENT PORTAL */}
+                  {prof.gap > 0 && (() => {
+                    const gapInfo = GAP_DATA[prof.competency.id] || GAP_DATA["comp_1"];
+                    const isReassessing = reassessmentCompId === prof.competency.id;
+
+                    return (
+                      <div className="mt-4 border-t border-slate-200/80 pt-4 space-y-4">
+                        <div className="bg-amber-50/50 border border-amber-200/80 rounded-lg p-4 space-y-3.5">
+                          <div className="flex items-center gap-2 text-[#D97706] font-sans font-extrabold text-xs">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span className="uppercase tracking-wider">Gap Detected & Diagnostic Analysis</span>
+                          </div>
+
+                          <div className="text-xs text-slate-750 leading-relaxed font-sans">
+                            <p className="font-semibold text-slate-900 mb-1">Impact & Explanation:</p>
+                            <p className="text-slate-650">{gapInfo.explanation}</p>
+                          </div>
+
+                          {/* Ref resources row: PDF manual and real links */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+                            <a
+                              href={gapInfo.pdfUrl}
+                              target="_blank"
+                              referrerPolicy="no-referrer"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2.5 p-2 bg-rose-50 hover:bg-rose-100/80 text-rose-805 rounded-md border border-rose-200 text-xs transition-colors group font-sans"
+                            >
+                              <FileText className="w-4 h-4 text-rose-600 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <span className="font-bold block truncate text-slate-900 group-hover:text-rose-900">Official PDF Guide</span>
+                                <span className="text-[9px] font-mono text-rose-500 uppercase block truncate">View Standard Handbook</span>
+                              </div>
+                            </a>
+
+                            {gapInfo.externalLinks.map((link, lIdx) => (
+                              <a
+                                key={lIdx}
+                                href={link.url}
+                                target="_blank"
+                                referrerPolicy="no-referrer"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 p-2 bg-sky-50 hover:bg-sky-100/80 text-sky-850 rounded-md border border-sky-150 text-xs transition-colors group font-sans"
+                              >
+                                <ExternalLink className="w-4 h-4 text-[#0284C7] shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-bold block truncate text-slate-900 group-hover:text-indigo-900">{link.name}</span>
+                                  <span className="text-[9px] font-mono text-sky-600 uppercase block truncate">{link.type}</span>
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+
+                          {/* Expert's suggestion notes */}
+                          <div className="bg-white/80 p-3 rounded-md border border-slate-150 text-xs italic text-slate-700 font-sans leading-relaxed flex items-start gap-2.5 shadow-3xs">
+                            <UserCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                            <p>{gapInfo.expertSuggestion}</p>
+                          </div>
+
+                          {/* Reassessment control panel */}
+                          <div className="border-t border-slate-200/60 pt-3.5 flex justify-between items-center">
+                            <p className="text-[10px] text-slate-500 font-mono">Status: <span className="font-bold text-amber-600 uppercase tracking-widest ">Gap Active</span></p>
+                            {!isReassessing ? (
+                              <button
+                                onClick={() => {
+                                  setReassessmentCompId(prof.competency.id);
+                                  setReassessmentAnswers({});
+                                  setReassessmentResult(null);
+                                }}
+                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold font-sans text-xs rounded shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <span>Conduct Gap Reassessment</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setReassessmentCompId(null);
+                                  setReassessmentResult(null);
+                                }}
+                                className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 border border-slate-200 text-xs font-semibold rounded"
+                              >
+                                Close Quiz Form
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Inline Expandable Reassessment Quiz */}
+                        {isReassessing && (
+                          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4 animate-fadeIn">
+                            <div className="flex justify-between items-center border-b border-slate-200 pb-2">
+                              <div className="flex items-center gap-1.5">
+                                <Sparkles className="w-4 h-4 text-[#0284C7]" />
+                                <span className="font-sans font-extrabold text-slate-900 text-xs uppercase tracking-wider">Trainee Verification Questionnaire</span>
+                              </div>
+                              <span className="text-[9px] font-mono uppercase bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold">Requires 100% Correct</span>
+                            </div>
+
+                            <div className="space-y-4">
+                              {gapInfo.questions.map((q, qIndex) => {
+                                const answer = reassessmentAnswers[q.id];
+                                return (
+                                  <div key={q.id} className="bg-white p-3.5 rounded-lg border border-slate-200 space-y-2">
+                                    <span className="text-[9px] text-[#0284C7] font-mono font-bold block uppercase tracking-wider">Question {qIndex + 1} of {gapInfo.questions.length}</span>
+                                    <p className="text-xs font-sans font-bold text-slate-850 leading-relaxed">{q.questionText}</p>
+                                    <div className="grid grid-cols-1 gap-1.5 pt-1">
+                                      {q.options.map((opt, optIndex) => {
+                                        const isSelected = answer === optIndex;
+                                        return (
+                                          <button
+                                            key={optIndex}
+                                            onClick={() => {
+                                              setReassessmentAnswers(prev => ({
+                                                ...prev,
+                                                [q.id]: optIndex
+                                              }));
+                                            }}
+                                            className={`text-left text-xs p-2.5 rounded-md border transition-all flex items-center justify-between cursor-pointer ${
+                                              isSelected
+                                                ? "bg-sky-50 border-sky-300 font-semibold text-sky-900 shadow-3xs"
+                                                : "bg-white hover:bg-slate-50 border-slate-200 text-slate-650"
+                                            }`}
+                                          >
+                                            <span>{opt}</span>
+                                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                              isSelected ? "border-[#0284C7] bg-[#0284C7]/10" : "border-slate-300 bg-white"
+                                            }`}>
+                                              {isSelected && <div className="w-2 h-2 rounded-full bg-[#0284C7]" />}
+                                            </div>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Reassessment Result Display */}
+                            {reassessmentResult && (
+                              <div className={`p-4 rounded-lg border text-xs font-sans space-y-1 ${
+                                reassessmentResult.success
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                  : "bg-rose-50 border-rose-250 text-rose-900"
+                              }`}>
+                                <div className="flex items-center gap-1.5 font-bold">
+                                  {reassessmentResult.success ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                                  )}
+                                  <span>{reassessmentResult.success ? "Reassessment Succeeded!" : "Validation Check Failed"}</span>
+                                </div>
+                                <p className="leading-relaxed text-slate-700">{reassessmentResult.message}</p>
+                              </div>
+                            )}
+
+                            {/* Submit action buttons */}
+                            <div className="flex justify-end pt-1 gap-2">
+                              {!reassessmentResult?.success && (
+                                <button
+                                  onClick={() => handleReassessmentSubmit(prof.competency.id, prof.requiredLevel)}
+                                  className="px-4 py-2 hover:bg-sky-705 text-white font-bold font-sans text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                                  style={{ backgroundColor: "#0284C7" }}
+                                >
+                                  <span>Submit Certified Answers</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                 </div>
               ))}
             </div>
@@ -673,12 +1300,9 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
                         <Check className="w-4 h-4 text-emerald-500" /> COMPLETED
                       </span>
                     ) : (
-                      <button
-                        onClick={() => handleMarkModuleComplete(item.module.id)}
-                        className="bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold font-sans text-xs px-3.5 py-1.5 rounded border border-[#0284C7] transition-colors cursor-pointer"
-                      >
-                        Launch & Complete Course
-                      </button>
+                      <span className="text-amber-600 bg-amber-50 px-3 py-1 border border-amber-200 rounded text-xs font-sans font-bold uppercase tracking-wider">
+                        Pending Assessment
+                      </span>
                     )}
                   </div>
 
@@ -749,6 +1373,109 @@ export default function DashboardEmployee({ lang = "en", userProfile, onRefreshS
                             </a>
                           );
                         })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SOP Checklist / Validation Quiz */}
+                  {item.status !== "completed" && item.questions && item.questions.length > 0 && (
+                    <div className="mt-5 p-4 rounded-lg bg-orange-50/20 border border-orange-100 flex flex-col gap-4">
+                      <div className="flex items-center gap-1.5 text-orange-700 font-sans font-extrabold text-xs">
+                        <Brain className="w-4 h-4 text-[#D97706]" />
+                        <span>SOP CLEARANCE CHECKLIST (अनिवार्य सुरक्षा प्रश्नोत्तरी जांच)</span>
+                      </div>
+                      
+                      <p className="text-xs text-slate-500">
+                        You must answer the 3 randomized validation questions below correctly (scoring at least 65%) to confirm clearance and verify actual competency understanding.
+                      </p>
+
+                      <div className="space-y-4">
+                        {item.questions.map((q: any, qIdx: number) => {
+                          const currentAnswer = activeModuleQuizAnswers[item.module.id]?.[q.id];
+
+                          return (
+                            <div key={q.id} className="bg-white p-3 rounded border border-slate-200">
+                              <span className="text-[10px] font-mono text-[#0284C7] font-bold block mb-1">
+                                QUESTION {qIdx + 1} OF {item.questions.length}
+                              </span>
+                              <p className="text-xs font-sans font-semibold text-slate-800">
+                                {lang === "en" ? q.questionText : q.questionTextHindi}
+                              </p>
+
+                              <div className="grid grid-cols-1 gap-2 mt-3">
+                                {(lang === "en" ? q.options : q.optionsHindi).map((opt: string, optIdx: number) => {
+                                  const isSelected = currentAnswer === optIdx;
+                                  return (
+                                    <button
+                                      key={optIdx}
+                                      onClick={() => {
+                                        setActiveModuleQuizAnswers(prev => ({
+                                          ...prev,
+                                          [item.module.id]: {
+                                            ...(prev[item.module.id] || {}),
+                                            [q.id]: optIdx
+                                          }
+                                        }));
+                                      }}
+                                      className={`text-left text-xs p-2.5 rounded border transition-all flex items-center justify-between cursor-pointer ${
+                                        isSelected
+                                          ? "bg-sky-50 border-sky-300 font-medium text-sky-800"
+                                          : "hover:bg-slate-50 border-slate-200 text-slate-600"
+                                      }`}
+                                    >
+                                      <span>{opt}</span>
+                                      <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                                        isSelected ? "border-[#0284C7]" : "border-slate-300"
+                                      }`}>
+                                        {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#0284C7]" />}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Quiz Verification Error / Success message */}
+                      {quizResults[item.module.id] && (
+                        <div className={`p-3.5 rounded border text-xs font-sans ${
+                          quizResults[item.module.id].success
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : "bg-rose-50 border-rose-100 text-rose-800"
+                        }`}>
+                          <div className="flex items-center gap-2 font-bold mb-1">
+                            {quizResults[item.module.id].success ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Verification Succeeded! ({quizResults[item.module.id].score}%)</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                                <span>Certification Assessment Failed</span>
+                              </>
+                            )}
+                          </div>
+                          <p className="leading-relaxed">{quizResults[item.module.id].message}</p>
+                          {quizResults[item.module.id].penaltyApplied && (
+                            <p className="text-[10px] font-mono mt-1 opacity-80">
+                              Note: {quizResults[item.module.id].penaltyApplied} (Actual gain: +{quizResults[item.module.id].skillIncrement} competency level)
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Submit / Verification trigger */}
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={() => handleMarkModuleComplete(item.module.id)}
+                          className="bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold font-sans text-xs px-4 py-2 rounded shadow-xs cursor-pointer transition-all flex items-center gap-1"
+                        >
+                          <span>Verify Answers & Complete SOP</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )}

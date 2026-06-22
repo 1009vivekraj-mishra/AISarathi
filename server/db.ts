@@ -85,7 +85,7 @@ export interface Question {
   optionsHindi?: string[];
   correctAnswerIdx: number;
   difficulty: "easy" | "medium" | "hard";
-  questionType: "mcq" | "scenario" | "safety" | "technical" | "digital_literacy" | "leadership";
+  questionType: "mcq" | "scenario" | "safety" | "technical" | "functional" | "digital_literacy" | "leadership";
   explanation: string;
   explanationHindi?: string;
 }
@@ -172,6 +172,7 @@ export interface DBState {
   edges: GraphEdge[];
   roles?: Role[];
   questions?: Question[];
+  ldMessages?: any[];
 }
 
 const DB_FILE = path.join(process.cwd(), "sarathi_db.json");
@@ -205,7 +206,7 @@ async function syncDoc(collectionName: string, docId: string, modelData: any) {
 }
 
 class CorporateDatabase {
-  private state: DBState = {
+  public state: DBState = {
     users: [],
     competencies: [],
     userSkills: [],
@@ -219,7 +220,8 @@ class CorporateDatabase {
     nodes: [],
     edges: [],
     roles: [],
-    questions: []
+    questions: [],
+    ldMessages: []
   };
 
   constructor() {
@@ -233,6 +235,7 @@ class CorporateDatabase {
         this.state = JSON.parse(data);
         if (!this.state.roles) this.state.roles = [];
         if (!this.state.questions) this.state.questions = [];
+        if (!this.state.ldMessages) this.state.ldMessages = [];
         // Ensure some initial seed questions always run if none exist
         if (this.state.roles.length === 0 || this.state.questions.length === 0) {
           this.initializeDefaults();
@@ -804,297 +807,569 @@ Maintain clear communication channels during active melt transfers:
 
     // Seed Dynamic Questions (incorporating English & Hindi labels/content)
     const seedQuestions: Question[] = [
+      // === 🛠️ TECHNICAL QUESTIONS (5 Questions: q_1 to q_5) ===
       {
         id: "q_1",
-        competencyId: "comp_1",
-        questionText: "What Carbon Monoxide (CO) sensor concentration level requires a full workplace evacuation alarm?",
-        questionTextHindi: "सुरक्षा नियमों के अनुसार कितने कार्बन मोनोऑक्साइड (CO) का स्तर होने पर पूरी निकासी की आवश्यकता होती है?",
-        options: ["10 ppm", "20 ppm", "30 ppm", "50 ppm"],
-        optionsHindi: ["10 पीपीएम", "20 पीपीएम", "30 पीपीएम", "50 पीपीएम"],
-        correctAnswerIdx: 3,
+        competencyId: "comp_2",
+        questionText: "What is the primary thermodynamic purpose of preheating a continuous caster tundish to 950°C before operation?",
+        questionTextHindi: "कास्टिंग से पहले टंडिश प्री-हीटिंग (950°C) का मुख्य थर्मोडायनामिक उद्देश्य क्या है?",
+        options: [
+          "To avoid thermal shock and cracking of refractory linings",
+          "To reduce carbon solubility in the ladle",
+          "To eliminate silicon monoxide gas pockets",
+          "To accelerate primary cooling spray rates"
+        ],
+        optionsHindi: [
+          "रिफ्रेक्ट्री लाइनिंग में थर्मल शॉक और दरारों से बचना",
+          "लैडल में कार्बन की घुलनशीलता को कम करना",
+          "सिलिकॉन मोनोऑक्साइड गैस पॉकेट को समाप्त करना",
+          "प्राथमिक शीतलन स्प्रे दरों में तेजी लाना"
+        ],
+        correctAnswerIdx: 0,
         difficulty: "easy",
-        questionType: "safety",
-        explanation: "CO level exceeding 50ppm triggers evacuation state automatically.",
-        explanationHindi: "50ppm से अधिक CO का स्तर होने पर तुरंत सुरक्षा अलार्म बजता है और निकासी शुरू की जाती है।"
+        questionType: "technical",
+        explanation: "Preheating refractory materials avoids rapid heat loss and structural cracking.",
+        explanationHindi: "रिफ्रेक्ट्री सामग्री को पहले से गर्म करने से तेजी से तापमान नुकसान और संरचनात्मक दरारें टल जाती हैं।"
       },
       {
         id: "q_2",
-        competencyId: "comp_1",
-        questionText: "Where should the plant workforce group upup during toxic gas leak sirens?",
-        questionTextHindi: "गैस रिसाव के समय कर्मचारियों के लिए सुरक्षित सभा स्थल (Assembly area) कौन सा है?",
-        options: [
-          "Downwind of leak directions for visibility",
-          "Inside low coordinate base pits",
-          "Upwind near designated Wind Direction Beacons",
-          "Directly under fuel tank release pathways"
-        ],
-        optionsHindi: [
-          "बॉयलर के पास हवा के नीचे की ओर",
-          "जमीनी स्तर के गड्ढों और घाटियों के अंदर",
-          "हवा के ऊपर की ओर, नामित विंड बीकन के पास",
-          "भारी ईंधन टैंक रिलीज मार्गों के नीचे"
-        ],
+        competencyId: "comp_3",
+        questionText: "Which microstructure phase represents high hardness but low ductility, making it problematic for structural steel layout weldability?",
+        questionTextHindi: "कौन सा माइक्रोस्ट्रक्चर चरण उच्च कठोरता लेकिन कम लचीलापन दर्शाता है, जो स्टील वेल्डेबिलिटी के लिए समस्याग्रस्त है?",
+        options: ["Austenite", "Coarse Pearlite", "Martensite", "Ferrite"],
+        optionsHindi: ["ऑस्टेनाइट", "मोटा पर्लाइट", "मार्टेंसाइट", "फेराइट"],
         correctAnswerIdx: 2,
         difficulty: "medium",
-        questionType: "scenario",
-        explanation: "Assembling upwind ensures breathing clean air free of gas particles.",
-        explanationHindi: "हवा की दिशा के विपरीत (ऊपर की ओर) खड़े होने से विषैली गैस सांस के साथ अंदर नहीं जाती।"
+        questionType: "technical",
+        explanation: "Martensite is brittle and hard, causing cracks under residual stresses.",
+        explanationHindi: "मार्टेंसाइट का निर्माण अत्यधिक तेज गति से ठंडा करने पर होता है, जिससे स्लैब कठोर व नाजुक हो जाता है।"
       },
       {
         id: "q_3",
-        competencyId: "comp_2",
-        questionText: "What is the primary operational cause of thermal shock in continuous caster refractories?",
-        questionTextHindi: "कास्टिंग के समय दुर्दम्य ईंटों (refractories) में थर्मल शॉक का मुख्य कारण क्या होता है?",
+        competencyId: "comp_3",
+        questionText: "In steel metallurgy, what is the critical effect of excessive aluminum additions in liquid steel?",
+        questionTextHindi: "स्टील धातुकर्म में, तरल इस्पात में अत्यधिक एल्युमिनियम मिलाने का गंभीर प्रभाव क्या होता है?",
         options: [
-          "Ladle shroud purge flows below 5 cubic meters",
-          "Insufficient preheating of the tundish setup (under 950°C)",
-          "Gradual caster speed calibration over 10 minutes",
-          "Extreme electromagnetic stirring frequency"
+          "Accelerates pearlite transformation",
+          "Causes alumina nozzle clogging in tundish stream",
+          "Increases steel sulfur concentration",
+          "Maintains liquid slag fluidity"
         ],
         optionsHindi: [
-          "कफन शुद्धिकरण का प्रवाह 5 घन मीटर से कम होना",
-          "टंडिश को पर्याप्त रूप से गर्म न करना (950°C से कम)",
-          "10 मिनट में रोटर की गति को धीरे-धीरे समायोजित करना",
-          "अत्यधिक इलेक्ट्रोमैग्नेटिक वेव फ्रीक्वेंसी"
+          "पर्लाइट परिवर्तन को तेज करता है",
+          "टंडिश प्रवाह में एल्युमिना नोजल ब्लॉकेज का कारण बनता है",
+          "स्टील में सल्फर की सांद्रता को बढ़ाता है",
+          "तरल स्लैग की तरलता बनाए रखता है"
         ],
         correctAnswerIdx: 1,
         difficulty: "hard",
         questionType: "technical",
-        explanation: "Pouring liquid steel at 1550°C into a cold tundish leads to cracking of refractories.",
-        explanationHindi: "ठंडे टंडिश में 1550°C गर्म पिघला हुआ तरल इस्पात डालने से रिफ्रेक्ट्रीज फट सकती है।"
+        explanation: "Excess Al forms solid alumina particles that stick to casting nozzles.",
+        explanationHindi: "अत्यधिक एल्युमीनियम से एल्युमिना का जमाव बढ़ता है जो नोजल को अवरुद्ध कर देता है।"
       },
       {
         id: "q_4",
-        competencyId: "comp_5",
-        questionText: "In SCADA command layouts, which live warning represents a blast furnace pressure risk?",
-        questionTextHindi: "स्काडा (SCADA) प्रणाली में कौन सा अलार्म भट्ठी के अधिक दबाव के खतरे को दर्शाता है?",
+        competencyId: "comp_2",
+        questionText: "What is the main cause of surface slag entrapment in casting slabs?",
+        questionTextHindi: "कास्टिंग स्लैब में सतह पर स्लैग फंसने (Slag entrapment) का मुख्य कारण क्या है?",
         options: [
-          "Level-2 communication sync heartbeat timeout",
-          "Automatic spray loop throttle status alert",
-          "Blast furnace top gas overpressure gauge flashing Red",
-          "Hydraulic sensor alignment offset gauge"
+          "Low spray nozzle pressure",
+          "Excessive mold level fluctuations",
+          "Elevated secondary cooling temperatures",
+          "Inert gas pressure deficit"
         ],
         optionsHindi: [
-          "लेवल-2 संचार सिंक में आई समस्या",
-          "ऑटोमैटिक स्प्रे लूप नियंत्रण में त्रुटि",
-          "धमन भट्ठी में गैस का दबाव लाल सूचक पर फ्लैश होना",
-          "हाइड्रोलिक सेंसर अलाइनमेंट में बदलाव"
+          "कम स्प्रे नोजल दबाव",
+          "अत्यधिक मोल्ड स्तर में उतार-चढ़ाव",
+          "बढ़ा हुआ द्वितीयक शीतलन तापमान",
+          "अक्रिय गैस के दबाव की कमी"
         ],
-        correctAnswerIdx: 2,
-        difficulty: "easy",
-        questionType: "digital_literacy",
-        explanation: "A flashing red top gas gauge shows pressure limits exceeded in the blast chamber.",
-        explanationHindi: "धमन भट्ठी में गैस का अत्यधिक दबाव होने पर स्काडा स्क्रीन पर रेड फ्लैश दिखाई देता है।"
+        correctAnswerIdx: 1,
+        difficulty: "medium",
+        questionType: "technical",
+        explanation: "Uncontrolled fluctuations pull liquid slag into the solidifying metal shell.",
+        explanationHindi: "मोल्ड में स्तर के अत्यधिक उतार-चढ़ाव से तरल स्लैग जमे हुए धातु में प्रवेश कर जाता है।"
       },
       {
         id: "q_5",
-        competencyId: "comp_prc_mng",
-        questionText: "What is the standard procedure to balance output schedules when furnace tapholes clogged?",
-        questionTextHindi: "फर्नेस टैप होल बंद होने पर उत्पादन को संतुलित करने का मानक नियम क्या है?",
+        competencyId: "comp_3",
+        questionText: "How does mold powder thickness affect heat transfer between mold copper plates and solidifying steel?",
+        questionTextHindi: "मोल्ड पाउडर की मोटाई मोल्ड तांबे की प्लेटों और ठोस हो रहे स्टील के बीच थर्मल ट्रांसफर को कैसे प्रभावित करती है?",
         options: [
-          "Stop ladles flow and slow down overall furnace blown rate",
-          "Increase gas purge flow up to 100 cubic meters",
-          "Shift cast speed instantly to 2.5 m/min",
-          "De-energize all secondary water spray tubes"
+          "Acts as thermal insulation and lubrication layer",
+          "Completely blocks vertical cooling system",
+          "Triggers direct metal-to-metal friction",
+          "Evaporates coolant water flow instantly"
         ],
         optionsHindi: [
-          "लैडल प्रवाह को रोकना और संपूर्ण फर्नेस आउटपुट को धीमा करना",
-          "गैस शुद्धिकरण प्रवाह को 100 घन मीटर तक बढ़ाना",
-          "कास्टिंग गति को तुरंत 2.5 मीटर/मिनट पर ले जाना",
-          "सभी द्वितीयक पानी के स्प्रे ट्यूबों को बंद करना"
+          "थर्मल इन्सुलेशन और स्नेहन (lubrication) परत के रूप में कार्य करता है",
+          "वर्टिकल कूलिंग सिस्टम को पूरी तरह से अवरुद्ध करता है",
+          "सीधे मेटल-टू-मेटल घर्षण को ट्रिगर करता है",
+          "कूलेंट पानी के प्रवाह को तुरंत वाष्पित करता है"
         ],
         correctAnswerIdx: 0,
         difficulty: "medium",
-        questionType: "scenario",
-        explanation: "Slowing furnace blow ensures safety from pressure buildup while clearing blockages.",
-        explanationHindi: "टैप होल ब्लॉक होने पर गति कम करने से अत्यधिक दबाव का निर्माण नहीं होता।"
+        questionType: "technical",
+        explanation: "Mold powder provides lubricated insulation, preventing thermal overload on mold plates.",
+        explanationHindi: "मोल्ड पाउडर शुष्क घर्षण रोकता है और गर्मी का समान वितरण आश्वस्त करता है।"
       },
+
+      // === 📋 FUNCTIONAL QUESTIONS (5 Questions: q_6 to q_10) ===
       {
         id: "q_6",
-        competencyId: "comp_ldr_dec",
-        questionText: "How should a supervisor act when an operator refuses to wear protective safety masks near the tapping zone?",
-        questionTextHindi: "यदि कोई कर्मचारी टैपिंग क्षेत्र के पास मास्क पहनने से मना करे, तो सुपरवाइजर को क्या करना चाहिए?",
+        competencyId: "comp_1",
+        questionText: "What is the standard operating protocol when a ladle breakout alarm is triggered near the caster?",
+        questionTextHindi: "कास्टर के पास लैडल ब्रेकआउट अलार्म बजने पर मानक संचालन प्रोटोकॉल क्या है?",
         options: [
-          "Ignore the behavior to complete production timelines on time",
-          "Suspend work immediately and enforce mask compliance before re-entry",
-          "Assign another teammate to do the job without mask",
-          "Deduct salary without communicating safety risks"
+          "Immediately divert stream to emergency ladle pits",
+          "Increase mold oscillation frequency by 20%",
+          "Close the secondary coolant water valves",
+          "Inspect physical hydraulic seals while stream runs"
         ],
         optionsHindi: [
-          "उत्पादन समय सीमा समय पर पूरी करने के लिए इस व्यवहार को अनदेखा करें",
-          "काम रोकें और नियमों का पालन कराने के बाद ही पुनः प्रवेश करने दें",
-          "बिना मास्क के ही दूसरे सहयोगी को काम सौंप दें",
-          "बिना समझाए केवल वेतन में कटौती कर दें"
+          "प्रवाह को तुरंत आपातकालीन लैडल गड्ढों (pits) में मोड़ें",
+          "मोल्ड दोलन की आवृत्ति को 20% बढ़ाएं",
+          "द्वितीयक कूलेंट पानी के वाल्व बंद करें",
+          "प्रवाह चलने के दौरान भौतिक हाइड्रोलिक सील का निरीक्षण करें"
         ],
-        correctAnswerIdx: 1,
+        correctAnswerIdx: 0,
         difficulty: "easy",
-        questionType: "leadership",
-        explanation: "Safety is top priority; non-compliant entries in hot zones cannot be permitted under any condition.",
-        explanationHindi: "सुरक्षा सर्वोपरि है; गर्म क्षेत्रों में बिना पीपीई के काम करने की बिल्कुल अनुमति नहीं दी जा सकती।"
+        questionType: "functional",
+        explanation: "Diverting molten metal safely to refractory-lined pits prevents destructive plant floor damage.",
+        explanationHindi: "पिघली धातु को सुरक्षित गड्ढों में मोड़ने से संयंत्र क्षेत्र में आग और भारी नुकसान टल जाता है।"
       },
       {
         id: "q_7",
-        competencyId: "comp_3",
-        questionText: "Which steel phase represents high hardness but is too brittle for pipeline manufacturing?",
-        questionTextHindi: "कौन सा इस्पात चरण अत्यधिक कठोरता दर्शाता है लेकिन पाइपलाइन के लिए अत्यंत नाजुक होता है?",
-        options: ["Pearlite core phase", "Austenite grain bounded matrix", "Martensite structure (मार्टेंसाइट)", "Ferrite pearlite grain bound"],
-        optionsHindi: ["पर्लाइट कोर चरण", "ऑस्टेनाइट दानेदार मैट्रिक्स", "मार्टेंसाइट संरचना", "फेराइट पर्लाइट"],
-        correctAnswerIdx: 2,
-        difficulty: "hard",
-        questionType: "technical",
-        explanation: "Martensite phases form during ultra-rapid cooling, leading to brittleness and pipeline cracking risks.",
-        explanationHindi: "मार्टेंसाइट का निर्माण अत्यधिक तेज गति से ठंडा करने पर होता है, जिससे स्लैब भंगुर हो जाता है।"
+        competencyId: "comp_2",
+        questionText: "Which test is used in casting quality control to detect interior micro-cracks in solid slabs?",
+        questionTextHindi: "ठोस स्लैब में आंतरिक सूक्ष्म दरारों का पता लगाने के लिए कास्टिंग गुणवत्ता नियंत्रण में किस परीक्षण का उपयोग किया जाता है?",
+        options: [
+          "Visual inspection only",
+          "Ultrasonic Non-Destructive Testing (NDT)",
+          "Ladle chemistry carbon analysis",
+          "Basic temperature thermocouple audits"
+        ],
+        optionsHindi: [
+          "केवल दृश्य निरीक्षण",
+          "अल्ट्रासोनिक गैर-विनाशकारी परीक्षण (NDT)",
+          "लैडल रसायन कार्बन विश्लेषण",
+          "बुनियादी तापमान थर्मोकपल ऑडिट"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "medium",
+        questionType: "functional",
+        explanation: "Ultrasonic NDT reveals hidden internal voids and micro fissures without destroying the slab.",
+        explanationHindi: "अल्ट्रासोनिक तरंगे ठोस लोहे के अंदर छिपी हुई सूक्ष्म दरारें दर्शाती हैं।"
       },
       {
         id: "q_8",
-        competencyId: "comp_knw_plt",
-        questionText: "Which plant section coordinates the ladle transition from Blast Furnace to Caster Moulds?",
-        questionTextHindi: "ब्लास्ट फर्नेस से कास्टर मोल्ड्स तक लैडल को भेजने का समन्वय कौन सा विभाग करता है?",
-        options: ["SMS Shop 2 (स्टील मेल्टिंग शॉप 2)", "Parking Zone C", "Gas Recovery Station", "Water Coolant Station"],
-        optionsHindi: ["एसएमएस शॉप 2 (SMS Shop 2)", "पार्किंग ज़ोन सी", "गैस रिकवरी स्टेशन", "वाटर कूलेंट स्टेशन"],
-        correctAnswerIdx: 0,
+        competencyId: "comp_2",
+        questionText: "What is the primary role of a ladle shroud during the liquid steel transfer phase?",
+        questionTextHindi: "तरल स्टील ट्रांसफर चरण के दौरान लैडल श्राउड (shroud) की प्राथमिक भूमिका क्या है?",
+        options: [
+          "To increase molten steel temperature",
+          "To prevent re-oxidation from ambient air contact",
+          "To filter carbon impurities mechanically",
+          "To control caster vibration parameters"
+        ],
+        optionsHindi: [
+          "पिघले हुए स्टील का तापमान बढ़ाने के लिए",
+          "परिवेशी वायु संपर्क से पुन: ऑक्सीकरण (re-oxidation) को रोकने के लिए",
+          "कार्बन अशुद्धियों को यांत्रिक रूप से छानने के लिए",
+          "कास्टर कंपन मापदंडों को नियंत्रित करने के लिए"
+        ],
+        correctAnswerIdx: 1,
         difficulty: "easy",
-        questionType: "mcq",
-        explanation: "SMS (Steel Melting Shop) handles the conversion of hot iron to steel and routes the ladles through casting lines.",
-        explanationHindi: "एसएमएस पिघले लोहे को स्टील में बदलने और लैडल को कास्टिंग लाइनों तक भेजने का प्रबंधन करता है।"
+        questionType: "functional",
+        explanation: "Ladle shrouds physically block contact with atmospheric oxygen, preserving steel quality.",
+        explanationHindi: "लैडल श्राउड इस्पात को बाहरी हवा से अलग कर ऑक्साइड अशुद्धियों को बनने से रोकता है।"
       },
       {
         id: "q_9",
-        competencyId: "comp_prc_mng",
-        questionText: "A severe nozzle clogging is detected on Strand 2 of the caster mold. What is the immediate responsive sequence to avoid a breakout?",
-        questionTextHindi: "कास्टर मोल्ड के स्ट्रैंड 2 पर एक गंभीर नोजल क्लॉगिंग का पता चला है। ब्रेकआउट से बचने के लिए तत्काल प्रतिक्रिया अनुक्रम क्या है?",
+        competencyId: "comp_1",
+        questionText: "Why is nitrogen gas flushing of the tundish slide-gate bypass line periodically required?",
+        questionTextHindi: "टंडिश स्लाइड-गेट बाईपास लाइन की नाइट्रोजन गैस फ्लशिंग समय-समय पर क्यों आवश्यक है?",
         options: [
-          "Instantly stop Strand 2 slider gate and adjust overall casting speed safely",
-          "Increase ladle purging pressure up to max to push through",
-          "Pour cold steel directly into the mold to freeze the leak",
-          "Disregard alarm signal and continue runtime log"
+          "To freeze unwanted slag clots",
+          "To purge atmospheric oxygen and prevent oxidation",
+          "To measure steel density dynamically",
+          "To lubricate mechanical gears"
         ],
         optionsHindi: [
-          "स्ट्रैंड 2 स्लाइडर गेट को तुरंत बंद करें और कास्टिंग गति को सुरक्षित रूप से समायोजित करें",
-          "पुश करने के लिए लैडल पुर्ज दबाव को अधिकतम तक बढ़ाएं",
-          "रिसाव को रोकने के लिए सीधे मोल्ड में ठंडी स्टील डालें",
-          "अलार्म सिग्नल को अनदेखा करें और रनटाइम लॉग जारी रखें"
+          "अवांछित स्लैग के थक्के जमाने के लिए",
+          "वायुमंडलीय ऑक्सीजन को बाहर निकालने और ऑक्सीकरण को रोकने के लिए",
+          "स्टील घनत्व को गतिशील रूप से मापने के लिए",
+          "यांत्रिक गियर को चिकना करने के लिए"
         ],
-        correctAnswerIdx: 0,
+        correctAnswerIdx: 1,
         difficulty: "medium",
-        questionType: "scenario",
-        explanation: "Stopping the affected strand's feeder slide prevents mold overflows or localized freezing.",
-        explanationHindi: "प्रभावित स्ट्रैंड के फीडर स्लाइड को रोकने से मोल्ड ओवरफ्लो या स्थानीय जमने की समस्या नहीं होती।"
+        questionType: "functional",
+        explanation: "Inert gas pressure pushes out atmospheric oxygen, keeping chemical oxidation at zero.",
+        explanationHindi: "अक्रिय गैस हवा को विस्थापित कर नोजल के आसपास जंग अथवा ऑक्सीकरण को रोकती है।"
       },
       {
         id: "q_10",
-        competencyId: "comp_1",
-        questionText: "During a high-temperature ladle transfer, you observe a minor leakage emission near the mold shroud. What is the correct priority sequence?",
-        questionTextHindi: "उच्च तापमान वाले लैडल ट्रांसफर के दौरान, आप मोल्ड कफन के पास थोड़ा रिसाव देखते हैं। सही प्राथमिकता अनुक्रम क्या है?",
-        options: [
-          "Pause flow immediately, secure safety perimeters, and notify metallurgical supervisor",
-          "Keep pouring steel and increase the secondary water cooling spray to solidify it",
-          "Manually tighten the shroud pins with bare hands while standing on the ladle platform",
-          "Ignore it until the current batch casting is fully completed"
-        ],
-        optionsHindi: [
-          "प्रवाह को तुरंत रोकें, सुरक्षा परिधि सुरक्षित करें, और धातुकर्म पर्यवेक्षक को सूचित करें",
-          "स्टील डालना जारी रखें और इसे जमने के लिए द्वितीयक जल शीतलन स्प्रे को बढ़ाएं",
-          "लैडल प्लेटफॉर्म पर खड़े होकर नंगे हाथों से मैन्युअल रूप से कफन पिन को कसें",
-          "वर्तमान बैच कास्टिंग पूरी होने तक इसे अनदेखा करें"
-        ],
+        competencyId: "comp_3",
+        questionText: "What is the standard target sulfur content threshold under quality specifications for structural grade steel?",
+        questionTextHindi: "संरचनात्मक ग्रेड स्टील के लिए गुणवत्ता विनिर्देशों के तहत मानक लक्षित सल्फर सामग्री सीमा क्या है?",
+        options: ["Below 0.015%", "Exactly 1.200%", "Around 5.500%", "Varies randomly from shift to shift"],
+        optionsHindi: ["0.015% से नीचे", "ठीक 1.200%", "लगभग 5.500%", "शिफ्ट दर शिफ्ट बेतरतीब ढंग से भिन्न होती है"],
         correctAnswerIdx: 0,
         difficulty: "hard",
-        questionType: "scenario",
-        explanation: "Pausing high temp steel transfer ensures safety boundary maintenance before active repairs.",
-        explanationHindi: "गर्म स्टील के रिसाव के समय प्रवाह रोकने से सक्रिय मरम्मत से पूर्व गंभीर दुर्घटना को टाला जा सकता है।"
+        questionType: "functional",
+        explanation: "Upholding sulfur below 0.015% avoids solidification cracking and hot shortness.",
+        explanationHindi: "सल्फर को 0.015% से नीचे रखने से इस्पात की गर्म अवस्था में टूटने की संवेदनशीलता कम होती है।"
       },
+
+      // === 💻 DIGITAL LITERACY QUESTIONS (5 Questions: q_11 to q_15) ===
       {
         id: "q_11",
         competencyId: "comp_5",
-        questionText: "When the Level-2 SCADA dashboard displays a yellow 'PLC Heartbeat Missing' flag, what is the best procedural first check for an operator?",
-        questionTextHindi: "जब लेवल-2 स्काडा डैशबोर्ड पीला 'पीएलसी हार्टबीट मिसिंग' ध्वज प्रदर्शित करता है, तो ऑपरेटर के लिए सबसे अच्छी प्रक्रियात्मक पहली जांच क्या है?",
+        questionText: "In a SCADA control interface, what action represents safe handling of a false temperature alarm sensor error?",
+        questionTextHindi: "स्काडा (SCADA) नियंत्रण इंटरफेस में, झूठी तापमान अलार्म सेंसर त्रुटि को सुरक्षित रूप से संभालने की कार्रवाई क्या है?",
         options: [
-          "Verify physical Ethernet switch connectivity and check terminal cycle times",
-          "Perform manual bypass shutdown of the entire water pumping station",
-          "Delete the entire sensor historical database to free space on controller",
-          "Re-route hot ladle flow into the secondary scrap yards"
+          "Delete the diagnostic logs",
+          "Acknowledge/mute the siren and flag the channel for maintenance",
+          "Force-close the main operating system window",
+          "Disconnect high-voltage generator mains"
         ],
         optionsHindi: [
-          "भौतिक ईथरनेट स्विच कनेक्टिविटी सत्यापित करें और टर्मिनल चक्र समय की जांच करें",
-          "संपूर्ण जल पंपिंग स्टेशन का मैन्युअल बायपास शटडाउन करें",
-          "कंट्रोलर पर जगह खाली करने के लिए संपूर्ण सेंसर ऐतिहासिक डेटाबेस हटाएं",
-          "द्वितीयक स्क्रैप यार्ड में गर्म लैडल प्रवाह को पुन: निर्देशित करें"
+          "नैदानिक ​​​​लॉग हटाएं",
+          "सायरन को स्वीकार/म्यूट करें और रखरखाव के लिए चैनल को चिह्नित करें",
+          "मुख्य ऑपरेटिंग सिस्टम विंडो को जबरन बंद करें",
+          "हाई-वोल्टेज जनरेटर मेन्स को डिस्कनेक्ट करें"
         ],
-        correctAnswerIdx: 0,
+        correctAnswerIdx: 1,
         difficulty: "easy",
         questionType: "digital_literacy",
-        explanation: "A yellow alarm points to communication lag or hardware link disconnects between the PLC and server.",
-        explanationHindi: "पीला अलार्म पीएलसी और सर्वर के बीच संचार अंतराल या केबल डिस्कनेक्ट होने की ओर संकेत करता है।"
+        explanation: "Acknowledge the alert so the dashboard remains active, then mark the channel for sensor replacement.",
+        explanationHindi: "अलार्म स्वीकार करने के बाद अलार्म म्यूट होता है पर सुरक्षा बनी रहती है, फिर चैनल को जांच के लिए भेजें।"
       },
       {
         id: "q_12",
         competencyId: "comp_5",
-        questionText: "How does the IoT-driven Sarathi predictive maintenance panel alert operators of a thermal slab crack risk?",
-        questionTextHindi: "IoT-संचालित सारथी भविष्य कहनेवाला रखरखाव पैनल ऑपरेटरों को थर्मल स्लैब क्रैक के जोखिम के बारे में कैसे सचेत करता है?",
+        questionText: "What does a red flashing indicator next to 'PLC Sync' in the Level-2 control console signify?",
+        questionTextHindi: "लेवल-2 नियंत्रण कंसोल में 'PLC Sync' के बगल में लाल चमकता हुआ संकेतक क्या दर्शाता है?",
         options: [
-          "By analyzing real-time thermocouple variations in the secondary cooling spray zones",
-          "By triggering physical alarm sirens located outside the administrative sector",
-          "By shutting down the entire external high-voltage electrical grid automatically",
-          "By printing a manual paper report at the central shift dispatch terminal"
+          "Internet browsing is disabled",
+          "Communication link loop disconnect between SCADA server and PLC",
+          "Operating room temperature too low",
+          "Caster speed has surpassed normal parameters"
         ],
         optionsHindi: [
-          "द्वितीयक शीतलन स्प्रे क्षेत्रों में वास्तविक समय थर्मोकपल विविधताओं का विश्लेषण करके",
-          "प्रशासनिक क्षेत्र के बाहर स्थित भौतिक अलार्म सायरन बजाकर",
-          "संपूर्ण बाहरी हाई-वोल्टेज बिजली ग्रिड को स्वचालित रूप से बंद करके",
-          "केंद्रीय शिफ्ट डिस्पैच टर्मिनल पर मैन्युअल पेपर रिपोर्ट प्रिंट करके"
+          "इंटरनेट ब्राउज़िंग अक्षम है",
+          "स्काडा सर्वर और पीएलसी के बीच संचार लूप डिस्कनेक्ट",
+          "ऑपरेटिंग रूम का तापमान बहुत कम है",
+          "कास्टर की गति सामान्य मापदंडों से अधिक हो गई है"
         ],
-        correctAnswerIdx: 0,
+        correctAnswerIdx: 1,
         difficulty: "medium",
         questionType: "digital_literacy",
-        explanation: "The predictive model monitors temperature trends across cooling arrays to catch micro cracks in solidifying casting shells.",
-        explanationHindi: "पूर्वानुमानित मॉडल स्लैब के जमने की प्रक्रिया के दौरान दरारें पकड़ने के लिए कूलिंग सरणियों में तापमान का आकलन करता है।"
+        explanation: "A red flashing sync flag denotes immediate telemetry data loss between the master server and automated controller.",
+        explanationHindi: "यह दर्शाता है कि सर्वर और पीएलसी हार्डवेयर के बीच डेटा प्रेषण तात्कालिक रूप से रुक गया है।"
       },
       {
         id: "q_13",
-        competencyId: "comp_ldr_dec",
-        questionText: "A project production target has fallen behind schedule. An experienced worker suggests skipping a mandatory 10-minute gas purging drill to catch up. How should a team leader respond?",
-        questionTextHindi: "एक परियोजना उत्पादन लक्ष्य समय से पीछे चल रहा है। एक अनुभवी कर्मचारी समय की भरपाई के लिए एक अनिवार्य 10-मिनट गैस पर्जिंग ड्रिल को छोड़ने का सुझाव देता है। एक टीम लीडर को क्या प्रतिक्रिया देनी चाहिए?",
+        competencyId: "comp_5",
+        questionText: "How can an operator export the thermocouple historic heat log charts securely from the Sarathi IoT monitor?",
+        questionTextHindi: "एक ऑपरेटर सारथी IoT मॉनिटर से थर्मोकपल ऐतिहासिक हीट लॉग चार्ट को सुरक्षित रूप से कैसे निर्यात कर सकता है?",
         options: [
-          "Enforce the safety drill strictly; explain that safety targets cannot be bartered for raw production speed",
-          "Allow skipping it just this once but warn them not to tell the audit team",
-          "Deduct the worker's weekend appraisal shift score without warning",
-          "Delegate the decision to the junior most shift apprentice to bypass accountability"
+          "Log in with auth token and export securely via central dashboard telemetry export",
+          "Take a hand-written photo using unauthorized personal device",
+          "Email the raw root server script files home",
+          "Write numbers down on scrap cardboard sheets"
         ],
         optionsHindi: [
-          "सुरक्षा ड्रिल को सख्ती से लागू करें; स्पष्ट करें कि उत्पादन गति के लिए सुरक्षा से समझौता नहीं हो सकता",
-          "केवल इस बार इसे छोड़ने की अनुमति दें लेकिन उन्हें ऑडिट टीम को न बताने की चेतावनी दें",
-          "बिना चेतावनी के कर्मचारी के सप्ताहांत मूल्यांकन शिफ्ट स्कोर में कटौती करें",
-          "जवाबदेही से बचने के लिए निर्णय को कनिष्ठतम शिफ्ट प्रशिक्षु को सौंपें"
+          "प्रमाणन टोकन के साथ लॉग इन करें और केंद्रीय डैशबोर्ड टेलीमेट्री निर्यात के माध्यम से सुरक्षित रूप से निर्यात करें",
+          "अनधिकृत व्यक्तिगत उपकरण का उपयोग करके हस्तलिखित फोटो लें",
+          "कच्ची रूट सर्वर स्क्रिप्ट फ़ाइलों को ईमेल करें",
+          "रद्दी कार्डबोर्ड शीट पर नंबर लिखें"
         ],
         correctAnswerIdx: 0,
-        difficulty: "hard",
-        questionType: "leadership",
-        explanation: "Ethical industrial leaders uphold safety policies above all transactional schedule pressures.",
-        explanationHindi: "सफल औद्योगिक नेतृत्व किसी भी दबाव में सुरक्षा मानकों से समझौता नहीं करता।"
+        difficulty: "easy",
+        questionType: "digital_literacy",
+        explanation: "Standard secure exports must utilize authenticated tokens via official dashboards.",
+        explanationHindi: "डेटा को हमेशा मुख्य सुरक्षित पैनल के माध्यम से प्रमाणित टोकन का उपयोग करके निर्यात करना चाहिए।"
       },
       {
         id: "q_14",
-        competencyId: "comp_ldr_dec",
-        questionText: "During a shift transition, a junior operator is nervous about reporting an accidental sensor drift. What leadership style encourages open incident reporting?",
-        questionTextHindi: "Shift परिवर्तन के दौरान, एक जूनियर ऑपरेटर दुर्घटनावश हुए सेंसर बहाव की रिपोर्ट करने में घबरा रहा है। कौन सी नेतृत्व शैली खुली घटना रिपोर्टिंग को प्रोत्साहित करती है?",
+        competencyId: "comp_5",
+        questionText: "When using the AI-powered digital copilot for querying plant safety regulations (HAZOP manuals), how is a more accurate answer obtained?",
+        questionTextHindi: "प्लांट सुरक्षा नियमों (HAZOP मैनुअल) की पूछताछ के लिए एआई-संचालित डिजिटल सह-पायलट का उपयोग करते समय, अधिक सटीक उत्तर कैसे प्राप्त किया जाता है?",
         options: [
-          "Blameless post-mortem culture; focusing on process safety improvement rather than punishment",
-          "Public discipline during morning assembly to set an example",
-          "Strict warnings and temporary suspension policies",
-          "Ignoring small sensor drifts and writing manual values in logs"
+          "Repeatedly press submit button",
+          "Provide exact context keywords such as standard codes, section headers, and error codes",
+          "Write arbitrary sentences in slang",
+          "Skip prompt writing entirely"
         ],
         optionsHindi: [
-          "दोषमुक्त आत्मनिरीक्षण संस्कृति; सजा के बजाय प्रक्रिया सुरक्षा सुधार पर ध्यान केंद्रित करना",
-          "उदाहरण स्थापित करने के लिए सुबह की सभा के दौरान सार्वजनिक अनुशासन",
-          "कड़े चेतावनी और अस्थायी निलंबन नियम",
-          "छोटे सेंसर बहाव को अनदेखा करना और लॉग में मैन्युअल मान लिखना"
+          "बार-बार सबमिट बटन दबाएं",
+          "सटीक संदर्भ कीवर्ड प्रदान करें जैसे कि मानक कोड, अनुभाग हेडर और त्रुटि कोड",
+          "अनौपचारिक भाषा में मनमाने वाक्य लिखें",
+          "प्रॉम्प्ट लिखना पूरी तरह से छोड़ दें"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "easy",
+        questionType: "digital_literacy",
+        explanation: "AI models retrieve relevant context using specific search tokens, standard codes and exact references.",
+        explanationHindi: "विशिष्ट टेक्निकल कोड और सेक्शन हेडर प्रदान करने से एआई सटीक समाधान खोज पाता है।"
+      },
+      {
+        id: "q_15",
+        competencyId: "comp_5",
+        questionText: "Why is modifying PLC interlocking parameters strictly forbidden for non-certified floor personnel?",
+        questionTextHindi: "गैर-प्रमाणित कर्मचारियों के लिए PLC इंटरलॉकिंग मापदंडों को संशोधित करना सख्त वर्जित क्यों है?",
+        options: [
+          "Because it halts the admin email server",
+          "Because it risks bypass of automated mechanical safety barriers, causing catastrophic accidents",
+          "Because it alters the monitor display color layouts",
+          "Because it changes the system local clock time"
+        ],
+        optionsHindi: [
+          "क्योंकि यह एडमिन ईमेल सर्वर को रोकता है",
+          "क्योंकि इससे स्वचालित यांत्रिक सुरक्षा बाधाएं बायपास हो सकती हैं, जिससे विनाशकारी दुर्घटनाएं हो सकती हैं",
+          "क्योंकि यह मॉनिटर डिस्प्ले कलर लेआउट को बदलता है",
+          "क्योंकि यह सिस्टम के स्थानीय घड़ी के समय को बदलता है"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "hard",
+        questionType: "digital_literacy",
+        explanation: "Interlock systems govern core physical thresholds. Decoupling them can easily lead to fatal explosions or metallic breakouts.",
+        explanationHindi: "इंटरलोक बायपास करने से मशीनी सुरक्षा कवच स्वतः हट जाते हैं जो गंभीर दुर्घटना का कारण बन सकते हैं।"
+      },
+
+      // === 🧠 SCENARIO BASED QUESTIONS (5 Questions: q_16 to q_20) ===
+      {
+        id: "q_16",
+        competencyId: "comp_1",
+        questionText: "Carbon Monoxide sensors at the continuous casting stage monitor reads 120 ppm. A maintenance operator has slipped inside the zone nearby. What is the correct priority sequence?",
+        questionTextHindi: "निरंतर कास्टिंग स्टेज मॉनिटर पर कार्बन मोनोऑक्साइड सेंसर 120 ppm दिखाता है। एक रखरखाव ऑपरेटर पास के क्षेत्र में फिसलकर गिर गया है। सही प्राथमिकता अनुक्रम क्या है?",
+        options: [
+          "Trigger sirens, activate localized evac, wear oxygen masks, retrieve operator immediately",
+          "Wait to see if CO levels drop naturally in 15 minutes",
+          "Instruct the operator to continue welding using protective glasses",
+          "Reboot SCADA dashboard and mute alarm"
+        ],
+        optionsHindi: [
+          "सायरन बजाएं, स्थानीय निकासी सक्रिय करें, ऑक्सीजन मास्क पहनें, ऑपरेटर को तुरंत बाहर निकालें",
+          "यह देखने के लिए प्रतीक्षा करें कि क्या 15 मिनट में CO का स्तर स्वाभाविक रूप से घटता है",
+          "ऑपरेटर को सुरक्षात्मक चश्मे का उपयोग करके वेल्डिंग जारी रखने का निर्देश दें",
+          "स्काडा डैशबोर्ड को रीबूट करें और अलार्म म्यूट करें"
+        ],
+        correctAnswerIdx: 0,
+        difficulty: "hard",
+        questionType: "scenario",
+        explanation: "CO levels over 100ppm demand immediate rescue with external oxygen configurations.",
+        explanationHindi: "100 पीपीएम से ऊपर सीओ का स्तर अत्यधिक विषैला होता है; बिना खुद की सुरक्षा सुनिश्चित किए बिना प्रवेश न करें।"
+      },
+      {
+        id: "q_17",
+        competencyId: "comp_2",
+        questionText: "While supervising mold operations, you notice a slag line thickening rapidly around the mold shroud. What is the best responsive flow?",
+        questionTextHindi: "मोल्ड संचालन की निगरानी करते समय, आप मोल्ड कफन के चारों ओर स्लैग लाइन को तेजी से मोटा होते हुए देखते हैं। सबसे अच्छी प्रतिक्रिया क्या है?",
+        options: [
+          "Increase mold powder volume instantly without adjusting temperature",
+          "Slightly reduce casting speed, alert operators, and adjust mold oscillation settings",
+          "Turn off coolant liquid flows completely",
+          "Leave it until standard winter system maintenance shutdown"
+        ],
+        optionsHindi: [
+          "तापमान को समायोजित किए बिना तुरंत मोल्ड पाउडर की मात्रा बढ़ाएं",
+          "कास्टिंग गति को थोड़ा कम करें, ऑपरेटरों को सचेत करें, और मोल्ड दोलन सेटिंग्स को समायोजित करें",
+          "कूलेंट तरल प्रवाह को पूरी तरह बंद करें",
+          "सर्दियों के सामान्य रख-रखाव शटडाउन तक इसे खाली छोड़ दें"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "medium",
+        questionType: "scenario",
+        explanation: "Adjusting oscillation and slowing speed stabilizes casting surface heat variance.",
+        explanationHindi: "दोलाई की आवृत्ति को नियंत्रित करने और गति धीमी करने से स्लैग परत संतुलित हो जाती है।"
+      },
+      {
+        id: "q_18",
+        competencyId: "comp_2",
+        questionText: "A secondary cooling spray header undergoes physical blockage on Strand 1. What happens if the caster speed is not reduced immediately?",
+        questionTextHindi: "स्ट्रैंड 1 पर एक द्वितीयक शीतलन स्प्रे हेडर भौतिक रूप से अवरुद्ध हो जाता है। यदि कास्टर की गति तुरंत कम नहीं की जाती है तो क्या होगा?",
+        options: [
+          "Molten steel will freeze in the tundish",
+          "Severe risk of solid steel structural breakout and strand warping",
+          "Slab carbon concentration increases linearly",
+          "Hydraulic pressure valves will disconnect instantly"
+        ],
+        optionsHindi: [
+          "टंडिश में पिघला हुआ स्टील जम जाएगा",
+          "ठोस स्टील संरचनात्मक ब्रेकआउट और स्ट्रैंड विकृत होने का गंभीर खतरा",
+          "स्लैब कार्बन सांद्रता रैखिक रूप से बढ़ती है",
+          "हाइड्रोलिक दबाव वाल्व तुरंत डिस्कनेक्ट हो जाएंगे"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "hard",
+        questionType: "scenario",
+        explanation: "Reduced cooling localized expansion causes thin casing shells to tear, creating critical liquid breakouts.",
+        explanationHindi: "कम कूलिंग वाले हिस्से में पतली परत दबाव से फट जाती है जिससे गर्म लोहा पूरे क्षेत्र में बिखर सकता है।"
+      },
+      {
+        id: "q_19",
+        competencyId: "comp_4",
+        questionText: "During ladle transfer, a minor hydraulic leak is detected in the tilt mechanism. What is the immediate responsive sequence?",
+        questionTextHindi: "लैडल ट्रांसफर के दौरान, झुकाव तंत्र (tilt mechanism) में एक मामूली हाइड्रोलिक रिसाव का पता चलता है। तत्काल प्रतिक्रिया अनुक्रम क्या है?",
+        options: [
+          "Engage auxiliary standby hydraulic circuit, lock the tilt system manually, and initiate containment controls",
+          "Mute the hydraulic warning limit sensor on SCADA",
+          "Keep the ladle hanging on main crane overmold and wait for shifts transition",
+          "Divert all secondary coolant water streams to hydraulic area"
+        ],
+        optionsHindi: [
+          "सहायक स्टैंडबाय हाइड्रोलिक सर्किट संलग्न करें, झुकाव प्रणाली को मैन्युअल रूप से लॉक करें, और नियंत्रण शुरू करें",
+          "स्काडा पर हाइड्रोलिक चेतावनी सीमा सेंसर को म्यूट करें",
+          "लैडल को क्रेन पर लटका हुआ छोड़ दें और शिफ्ट बदलने का इंतजार करें",
+          "सभी द्वितीयक शीतलन जल प्रवाहों को हाइड्रोलिक क्षेत्र में मोड़ें"
         ],
         correctAnswerIdx: 0,
         difficulty: "medium",
+        questionType: "scenario",
+        explanation: "Standby circuits stabilize the heavy thermal load of the ladle before active offline maintenance begins.",
+        explanationHindi: "स्टैंडबाय हाइड्रोलिक सर्किट को तुरंत चालू कर लोड सुरक्षित करना ही पहली प्राथमिकता है।"
+      },
+      {
+        id: "q_20",
+        competencyId: "comp_2",
+        questionText: "A sudden power flicker causes the electromagnetic casting mold stirrer to stop. How does this affect solidified slab interior grain quality?",
+        questionTextHindi: "अचानक बिजली के झटके से इलेक्ट्रोमैग्नेटिक मोल्ड स्टिरर (stirrer) रुक जाता है। यह जमे हुए स्लैब की आंतरिक दानेदार गुणवत्ता को कैसे प्रभावित करता है?",
+        options: [
+          "Improves chemistry homogeneity and strength parameters",
+          "Produces severe columnar dendrite growth with risk of internal cracking",
+          "Renders the outer shell highly elastic",
+          "Decreases the mold level fluctuations entirely"
+        ],
+        optionsHindi: [
+          "रासायनिक समरूपता और शक्ति मापदंडों में सुधार करता है",
+          "आंतरिक दरार के जोखिम के साथ गंभीर स्तंभ डेंड्राइट (columnar dendrite) विकास पैदा करता है",
+          "बाहरी आवरण को अत्यधिक लचीला बनाता है",
+          "मोल्ड स्तर के उतार-चढ़ाव को पूरी तरह से कम करता है"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "hard",
+        questionType: "scenario",
+        explanation: "Electromagnetic stirring maintains non-directional equiaxed crystal growth; without it, columnar crystals dominate and cause cracking.",
+        explanationHindi: "मैग्नेटिक स्टिरर के अभाव में धातु के क्रिस्टल एक ही अनचाही दिशा में असामान्य रूप से बढ़ने लगते हैं।"
+      },
+
+      // === 👑 LEADERSHIP QUESTIONS (5 Questions: q_21 to q_25) ===
+      {
+        id: "q_21",
+        competencyId: "comp_ldr_dec",
+        questionText: "A critical safety hazard warning has been bypassed by a senior shifts specialist. How should a manager or supervisor handle this violation?",
+        questionTextHindi: "एक वरिष्ठ शिफ्ट विशेषज्ञ द्वारा एक महत्वपूर्ण सुरक्षा चेतावनी को बायपास कर दिया गया है। एक प्रबंधक या पर्यवेक्षक को इस उल्लंघन को कैसे संभालना चाहिए?",
+        options: [
+          "Ignore it since the specialist has 15+ years experience",
+          "Initiate a blameless hazard de-briefing, explain critical risk to human safety, and document mandatory corrective compliance rules",
+          "Suspend the specialist and notify HR without verbal communication",
+          "Bypass the report and assign the safety drill to an apprentice instead"
+        ],
+        optionsHindi: [
+          "इसे अनदेखा करें क्योंकि विशेषज्ञ के पास 15+ वर्षों का अनुभव है",
+          "एक दोषमुक्त सुरक्षा डी-ब्रीफिंग शुरू करें, मानव सुरक्षा के लिए गंभीर जोखिम की व्याख्या करें, और सुधारात्मक नियम दर्ज करें",
+          "बिना किसी मौखिक संचार के विशेषज्ञ को निलंबित करें और मानव संसाधन (HR) को सूचित करें",
+          "रिपोर्ट को दरकिनार करें और सुरक्षा ड्रिल एक नए प्रशिक्षु को सौंपें"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "easy",
         questionType: "leadership",
-        explanation: "Establishing safety trust drives open reporting, preventing fatal facility failures behind hidden errors.",
-        explanationHindi: "विश्वास-आधारित वातावरण बनाने से कर्मचारी बिना डरे गलतियाँ साझा करते हैं जिससे भविष्य की बड़ी दुर्घटनाओं को रोका जा सकता है।"
+        explanation: "Constructive feedback and process analysis prevent future safety bypasses while maintaining workspace trust.",
+        explanationHindi: "वरिष्ठ कर्मियों के साथ रचनात्मक चर्चा और खतरों के विश्लेषण से भविष्य के उल्लंघनों को टाला जा सकता है।"
+      },
+      {
+        id: "q_22",
+        competencyId: "comp_ldr_dec",
+        questionText: "How should a shift supervisor balance high-volume production deadlines alongside critical safety rules during annual turnaround?",
+        questionTextHindi: "एक शिफ्ट पर्यवेक्षक को वार्षिक बदलाव (turnaround) के दौरान महत्वपूर्ण सुरक्षा नियमों के साथ उच्च-मात्रा उत्पादन समय सीमा को कैसे संतुलित करना चाहिए?",
+        options: [
+          "Prioritize production deadlines, safety rules can be followed during normal schedules",
+          "Uphold safety rules strictly; high-volume goals must always follow solid pre-verified safety compliance protocols",
+          "Delegate safety monitoring directly to third party external hires with no plant power",
+          "Implement safety protocols only if accidents are reported in adjacent zones"
+        ],
+        optionsHindi: [
+          "उत्पादन समय सीमा को प्राथमिकता दें, सामान्य कार्यक्रम के दौरान सुरक्षा नियमों का पालन किया जा सकता है",
+          "सुरक्षा नियमों का कड़ाई से पालन करें; उत्पादन उद्देश्यों को हमेशा सुरक्षा प्रोटोकॉल का पालन करना चाहिए",
+          "सुरक्षा निगरानी को सीधे तीसरे पक्ष के बाहरी कर्मचारियों को सौंपें जिनके पास कोई प्लांट अधिकार नहीं है",
+          "सुरक्षा प्रोटोकॉल तभी लागू करें जब आस-पास के क्षेत्रों में दुर्घटनाओं की सूचना मिले"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "medium",
+        questionType: "leadership",
+        explanation: "Production volume must never compromise personnel safety boundaries.",
+        explanationHindi: "सुरक्षा हमेशा उत्पादन से ऊपर रहेगी। सुरक्षित संचालन ही उत्तम परिणाम लाता है।"
+      },
+      {
+        id: "q_23",
+        competencyId: "comp_ldr_dec",
+        questionText: "A junior apprentice is scared to report a minor operational error on mold oscillation controllers. What leadership environment best solves this?",
+        questionTextHindi: "एक जूनियर प्रशिक्षु मोल्ड दोलन नियंत्रकों पर एक छोटी सी परिचालन त्रुटि की रिपोर्ट करने से डरता है। कौन सी नेतृत्व वातावरण इसे सबसे अच्छी तरह हल करता है?",
+        options: [
+          "A strict zero-tolerance penalty regime on any reporting errors",
+          "An open, psychological-safety corporate culture focusing on lessons-learned diagnostics instead of individual blame",
+          "Publishing names of low performers on morning shift bulletin boards",
+          "Ignoring minor errors and manually fixing logs later"
+        ],
+        optionsHindi: [
+          "किसी भी रिपोर्टिंग त्रुटियों पर एक सख्त शून्य-सहनशीलता जुर्माना व्यवस्था",
+          "एक खुली और मनोवैज्ञानिक रूप से सुरक्षित कॉर्पोरेट संस्कृति जो व्यक्तिगत दोष के बजाय सीखे गए पाठों पर ध्यान केंद्रित करती है",
+          "सुबह के शिफ्ट बुलेटिन बोर्ड पर खराब प्रदर्शन करने वालों के नाम प्रकाशित करना",
+          "छोटी गलतियों को नजरअंदाज करना और बाद में मैन्युअल रूप से लॉग ठीक करना"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "medium",
+        questionType: "leadership",
+        explanation: "Psychological safety encourages proactive hazard warning, preventing subsequent catastrophes.",
+        explanationHindi: "विश्वास का माहौल होने से कर्मचारी अपनी तकनीकी त्रुटियों को छिपाने के बजाय तुरंत साझा करते हैं।"
+      },
+      {
+        id: "q_24",
+        competencyId: "comp_ldr_dec",
+        questionText: "An experienced operator rejects using New predictive electronic telemetry monitors. What is the most effective coaching model?",
+        questionTextHindi: "एक अनुभवी ऑपरेटर नए भविष्य कहने वाले इलेक्ट्रॉनिक टेलीमेट्री मॉनिटर का उपयोग करने से इनकार करता है। सबसे प्रभावी कोचिंग मॉडल क्या है?",
+        options: [
+          "Threaten salary reduction for technology non-compliance",
+          "Hold a hands-on pairing session, demonstrating real safety benefits and how it prevents casting breakout accidents",
+          "Allow using old manual books completely, bypassing new plant standard rules",
+          "Instruct other personnel to ignore the operator during shifts"
+        ],
+        optionsHindi: [
+          "प्रौद्योगिकी गैर-अनुपालन के लिए वेतन कटौती की धमकी दें",
+          "एक व्यावहारिक सह-कार्य सत्र आयोजित करें, जिसमें वास्तविक सुरक्षा लाभ प्रदर्शित हों और यह कास्टिंग ब्रेकआउट को कैसे रोकता है",
+          "पूरी तरह से पुरानी नियमावली पुस्तकों के उपयोग की अनुमति दें",
+          "अन्य कर्मचारियों को निर्देश दें कि वे शिफ्ट के दौरान ऑपरेटर की उपेक्षा करें"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "easy",
+        questionType: "leadership",
+        explanation: "Relatable demonstrations build functional alignment, helping veterans shift easily from legacy routines.",
+        explanationHindi: "व्यवहारिक रूप से सुरक्षा लाभ दिखाने से नए उपकरणों को सीखने में वरिष्ठ कर्मचारियों का हिचकिचाहट दूर होता है।"
+      },
+      {
+        id: "q_25",
+        competencyId: "comp_ldr_dec",
+        questionText: "How should a plant supervisor manage conflicts between metallurgical quality control requests and high casting speeds demanded by sales teams?",
+        questionTextHindi: "एक प्लांट सुपरवाइजर को धातुकर्म गुणवत्ता नियंत्रण अनुरोधों और बिक्री टीमों द्वारा मांगी गई उच्च कास्टिंग गति के बीच संघर्ष को कैसे प्रबंधित करना चाहिए?",
+        options: [
+          "Follow sales requests blindly; steel quality can be fixed during subsequent processes",
+          "Uphold metallurgy standards; quality parameters must always be non-compromised to prevent catastrophic down-line failures and product rejection",
+          "Alternate randomly between speed and quality every hour",
+          "Delegate core parameter decision to manual labor personnel"
+        ],
+        optionsHindi: [
+          "आंख मूंदकर बिक्री अनुरोधों का पालन करें; स्टील की गुणवत्ता को बाद की प्रक्रियाओं के दौरान ठीक किया जा सकता है",
+          "धातुकर्म मानकों को बनाए रखें; डाउन-लाइन विफलताओं और उत्पाद अस्वीकृति को रोकने के लिए गुणवत्ता मापदंडों से कभी समझौता नहीं किया जाना चाहिए",
+          "हर घंटे गति और गुणवत्ता के बीच बेतरतीब ढंग से बदलाव करें",
+          "मुख्य पैरामीटर निर्णय को मैनुअल श्रम कर्मियों को सौंपें"
+        ],
+        correctAnswerIdx: 1,
+        difficulty: "hard",
+        questionType: "leadership",
+        explanation: "Upholding structural quality guarantees compliance safety, preventing downstream industrial asset hazards.",
+        explanationHindi: "इस्पात की संरचनात्मक गुणवत्ता ही औद्योगिक मानकों की आधारशिला है, जिससे समझौता गंभीर नुकसान दे सकता है।"
       }
     ];
 
@@ -1309,6 +1584,28 @@ Maintain clear communication channels during active melt transfers:
 
   public getGraphEdges() { return this.state.edges; }
   public addGraphEdge(edge: GraphEdge) { this.state.edges.push(edge); this.save(); }
+
+  public getLDMessages() {
+    if (!this.state.ldMessages) this.state.ldMessages = [];
+    return this.state.ldMessages;
+  }
+  public addLDMessage(msg: any) {
+    if (!this.state.ldMessages) this.state.ldMessages = [];
+    this.state.ldMessages.push(msg);
+    this.save();
+    syncDoc("ld_messages", msg.id, msg);
+  }
+  public updateLDMessage(msg: any) {
+    if (!this.state.ldMessages) this.state.ldMessages = [];
+    const idx = this.state.ldMessages.findIndex(m => m.id === msg.id);
+    if (idx !== -1) {
+      this.state.ldMessages[idx] = msg;
+    } else {
+      this.state.ldMessages.push(msg);
+    }
+    this.save();
+    syncDoc("ld_messages", msg.id, msg);
+  }
 }
 
 const db = new CorporateDatabase();

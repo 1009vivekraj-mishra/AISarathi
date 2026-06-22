@@ -264,10 +264,10 @@ export const api = {
     return data;
   },
 
-  async completeLearningModule(moduleId: string) {
+  async completeLearningModule(moduleId: string, answers?: any) {
     const res = await fetch(`${API_BASE}/learning-paths/complete`, {
       method: "POST",
-      body: JSON.stringify({ moduleId }),
+      body: JSON.stringify({ moduleId, answers }),
       headers: getHeaders()
     });
     const data = await res.json();
@@ -397,6 +397,67 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed custom relation creation");
+    return data;
+  },
+
+  // HawkEye L&D & Retirement APIs
+  async getLDHawkEye() {
+    const res = await fetch(`${API_BASE}/ld/hawkeye`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load central HawkEye intelligence");
+    return data;
+  },
+
+  async postLDConnect(payload: { targetType: string; targetId: string; message: string; type: string; assignedModuleId?: string }) {
+    const res = await fetch(`${API_BASE}/ld/connect`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to push Connect command");
+    return data;
+  },
+
+  async getLDInbox() {
+    const res = await fetch(`${API_BASE}/ld/messages/inbox`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to pull inbox messages");
+    return data;
+  },
+
+  async postLDRetirementAssess(payload: { retireeId: string; assessmentTitle: string; questions: any[] }) {
+    const res = await fetch(`${API_BASE}/ld/retirement/assess`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to compile retiree wisdom assessment");
+    return data;
+  },
+
+  async getLDRetirementMyRequests() {
+    const res = await fetch(`${API_BASE}/ld/retirement/my-requests`, {
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load transition-retaining requests");
+    return data;
+  },
+
+  async submitLDRetirementWisdom(payload: { assessmentId: string; answers: { [key: string]: number } }) {
+    const res = await fetch(`${API_BASE}/ld/retirement/submit`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: getHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to submit wisdom transition capsule");
     return data;
   }
 };

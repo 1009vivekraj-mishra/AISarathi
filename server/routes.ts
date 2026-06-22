@@ -149,11 +149,16 @@ router.post("/auth/onboard", authenticateToken, (req: Request, res: Response) =>
     return;
   }
 
-  // Save onboarding details but keep profileCompleted = false to enforce the registration assessment!
-  user.profileCompleted = false;
+  // Update role if supplied, then set profileCompleted: admin (Leadership) has no test, others have it
+  user.role = req.body.role || user.role;
+  if (user.role === "admin") {
+    user.profileCompleted = true;
+  } else {
+    user.profileCompleted = false;
+  }
+
   if (jobTitle) user.jobTitle = jobTitle;
   if (department) user.department = department;
-  user.role = req.body.role || user.role; // Allow switching role privilege during registration if supplied
 
   user.onboardingData = {
     priorExperienceYrs: Number(priorExperienceYrs) || 0,
@@ -163,9 +168,9 @@ router.post("/auth/onboard", authenticateToken, (req: Request, res: Response) =>
 
   db.saveUser(user);
 
-  // Return token (so they remain logged in) but let them know they must proceed to step-2 assessment
+  // Return token (so they remain logged in)
   const token = generateToken(user);
-  res.json({ message: "Profile saved. Proceed to competence mapping assessment.", token, user });
+  res.json({ message: "Profile saved.", token, user });
 });
 
 // ==========================================
@@ -423,8 +428,18 @@ router.get("/users/team", authenticateToken, (req: Request, res: Response) => {
   if (reqUser.role === "admin") {
     res.json(db.getUsers());
   } else if (reqUser.role === "manager") {
-    // Return teammates in the same department
-    const team = db.getUsers().filter(u => u.department === reqUser.department && u.role === "employee");
+    // Return all registered employees across the plant, prioritizing those in the manager's department
+    const managerDept = (reqUser.department || "").trim().toLowerCase();
+    const team = db.getUsers().filter(u => u.role === "employee").sort((a, b) => {
+      // Same department first, then alphabetical by full name
+      const aDept = (a.department || "").trim().toLowerCase();
+      const bDept = (b.department || "").trim().toLowerCase();
+      const aMatches = aDept === managerDept;
+      const bMatches = bDept === managerDept;
+      if (aMatches && !bMatches) return -1;
+      if (!aMatches && bMatches) return 1;
+      return (a.fullName || "").localeCompare(b.fullName || "");
+    });
     
     // Enrich with metrics
     const competencies = db.getCompetencies();
@@ -704,7 +719,7 @@ function getRelevantRandomizedQuestions(user: any, assessment: any, limit: numbe
 
   // 1. Identify which competencies are relevant to the user's role/job
   const userRoleName = user.jobTitle || "";
-  const roles = db.getState().roles || [];
+  const roles = db.getRoles();
   const matchedRole = roles.find((r: any) => r.roleName.toLowerCase().trim() === userRoleName.toLowerCase().trim());
   
   const relevantCompetencyIds = new Set<string>();
@@ -898,7 +913,7 @@ router.post("/assessments/submit", authenticateToken, (req: Request, res: Respon
       weight = userRole === "manager" ? 1.5 : 1.0;
     }
 
-    const itemPoints = (q.points || 20) * weight;
+    const itemPoints = ((q as any).points || 20) * weight;
     totalPoints += itemPoints;
     if (isCorrect) earnedPoints += itemPoints;
 
@@ -1823,6 +1838,429 @@ router.post("/graph/edge", authenticateToken, (req: Request, res: Response) => {
 
   db.addGraphEdge(newEdge);
   res.status(201).json(newEdge);
+});
+
+// ==========================================
+// 👁️ L&D HAWKEYE & RETIREMENT REPOSITORY ENDPOINTS
+// ==========================================
+
+router.get("/ld/hawkeye", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin" && reqUser.role !== "manager") {
+    res.status(403).json({ error: "Only L&D admins and managers have access to HawkEye central intelligence." });
+    return;
+  }
+
+  const users = db.getUsers();
+  const competencies = db.getCompetencies();
+  const allSkills = db.getUserSkills();
+  const allAttempts = db.getAttempts();
+  const allProgressList = db.getProgress();
+  const activeModules = db.getModules();
+  const allMessages = db.getLDMessages();
+
+  // 1. Process all employees
+  const employees = users.filter(u => u.role === "employee").map(emp => {
+    const userSkills = allSkills.filter(s => s.userId === emp.id);
+    const attempts = allAttempts.filter(a => a.userId === emp.id);
+    const progressList = allProgressList.filter(p => p.userId === emp.id);
+
+    // WRI Calculation
+    let totalReqMetRatio = 0;
+    if (competencies.length > 0) {
+      let metCounter = 0;
+      competencies.forEach(comp => {
+        const us = userSkills.find(s => s.competencyId === comp.id);
+        const current = us ? us.currentLevel : 0;
+        if (current >= comp.requiredLevel) {
+          metCounter += 1;
+        } else {
+          metCounter += (current / comp.requiredLevel);
+        }
+      });
+      totalReqMetRatio = metCounter / competencies.length;
+    }
+
+    let passRatio = 0;
+    if (attempts.length > 0) {
+      const assessmentIds = Array.from(new Set(attempts.map(a => a.assessmentId)));
+      let weightedPassesTotal = 0;
+      assessmentIds.forEach(assId => {
+        const assAttempts = attempts.filter(a => a.assessmentId === assId);
+        const passedAttempts = assAttempts.filter(a => a.passed);
+        if (passedAttempts.length > 0) {
+          const passedIndex = assAttempts.findIndex(a => a.passed);
+          const attemptsToPass = passedIndex !== -1 ? (passedIndex + 1) : assAttempts.length;
+          const attemptPenalty = Math.max(0.4, 1.0 - (attemptsToPass - 1) * 0.15);
+          weightedPassesTotal += attemptPenalty;
+        }
+      });
+      passRatio = weightedPassesTotal / assessmentIds.length;
+    }
+
+    let learnRatio = 0;
+    if (activeModules.length > 0) {
+      const completedNum = progressList.filter(p => p.status === "completed").length;
+      learnRatio = completedNum / activeModules.length;
+    }
+
+    const wriVal = Math.round((totalReqMetRatio * 50) + (passRatio * 30) + (learnRatio * 20));
+    const wri = Math.min(100, Math.max(10, wriVal));
+
+    const avgScore = attempts.length > 0 
+      ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length) 
+      : 0;
+
+    return {
+      id: emp.id,
+      fullName: emp.fullName,
+      username: emp.username,
+      jobTitle: emp.jobTitle,
+      department: emp.department,
+      priorExperienceYrs: emp.onboardingData?.priorExperienceYrs || 0,
+      wri,
+      completedCount: progressList.filter(p => p.status === "completed").length,
+      averageScore: avgScore,
+      totalAttempts: attempts.length,
+      skills: userSkills.map(s => {
+        const c = competencies.find(comp => comp.id === s.competencyId);
+        return {
+          competencyId: s.competencyId,
+          name: c ? c.name : "Unmapped Skill",
+          level: s.currentLevel
+        };
+      })
+    };
+  });
+
+  // 2. Teamwise Details (Distinct Roles / Job Titles of Employees)
+  const distinctRoles = Array.from(new Set(employees.map(e => e.jobTitle)));
+  const teams = distinctRoles.map(role => {
+    const members = employees.filter(e => e.jobTitle === role);
+    const avgWri = members.length > 0 
+      ? Math.round(members.reduce((acc, m) => acc + m.wri, 0) / members.length)
+      : 0;
+    const totalCompletions = members.reduce((acc, m) => acc + m.completedCount, 0);
+
+    return {
+      roleName: role,
+      headcount: members.length,
+      avgWri,
+      totalCompletions,
+      members: members.map(m => ({ id: m.id, fullName: m.fullName, wri: m.wri }))
+    };
+  });
+
+  // 3. Department Details
+  const distinctDepts = Array.from(new Set(employees.map(e => e.department)));
+  const departments = distinctDepts.map(dept => {
+    const members = employees.filter(e => e.department === dept);
+    const avgWri = members.length > 0 
+      ? Math.round(members.reduce((acc, m) => acc + m.wri, 0) / members.length)
+      : 0;
+    const totalCompletions = members.reduce((acc, m) => acc + m.completedCount, 0);
+
+    return {
+      department: dept,
+      headcount: members.length,
+      avgWri,
+      totalCompletions,
+      members: members.map(m => ({ id: m.id, fullName: m.fullName, wri: m.wri }))
+    };
+  });
+
+  // 4. Managers Details
+  const managers = users.filter(u => u.role === "manager").map(m => {
+    const subordinates = employees.filter(emp => emp.department === m.department);
+    const teamWri = subordinates.length > 0
+      ? Math.round(subordinates.reduce((sum, s) => sum + s.wri, 0) / subordinates.length)
+      : 0;
+
+    return {
+      id: m.id,
+      fullName: m.fullName,
+      username: m.username,
+      department: m.department,
+      jobTitle: m.jobTitle,
+      headcount: subordinates.length,
+      teamAverageWri: teamWri,
+      subordinates: subordinates.map(sub => ({ id: sub.id, fullName: sub.fullName, wri: sub.wri }))
+    };
+  });
+
+  // 5. Overall System Analytics
+  const overallWri = employees.length > 0
+    ? Math.round(employees.reduce((acc, e) => acc + e.wri, 0) / employees.length)
+    : 75;
+  const totalCompletedModules = allProgressList.filter(p => p.status === "completed").length;
+  const totalAttemptsCount = allAttempts.length;
+
+  const overall = {
+    totalEmployees: employees.length,
+    totalManagers: managers.length,
+    overallWri,
+    totalCompletedModules,
+    totalAttemptsCount,
+    activeLearnersCount: Array.from(new Set(allProgressList.map(p => p.userId))).length
+  };
+
+  // 6. Retirement Repository
+  const seniorThresholdYrs = 15;
+  const nearRetirement = users.filter(u => u.role === "employee" && (u.onboardingData?.priorExperienceYrs || 0) >= seniorThresholdYrs).map(r => {
+    const progressList = allProgressList.filter(p => p.userId === r.id);
+    const customAssessments = allAttempts.filter(a => a.userId === r.id && a.assessmentId.startsWith("wisdom_"));
+
+    return {
+      id: r.id,
+      fullName: r.fullName,
+      jobTitle: r.jobTitle,
+      department: r.department,
+      experienceYrs: r.onboardingData?.priorExperienceYrs || 0,
+      completedSOPs: progressList.filter(p => p.status === "completed").length,
+      wisdomCaptured: customAssessments.length > 0,
+      wisdomReports: customAssessments.map(ca => ({
+        id: ca.id,
+        title: ca.assessmentId.replace("wisdom_", "").replace(/_/g, " "),
+        completedAt: ca.completedAt,
+        passed: ca.passed,
+        score: ca.score
+      }))
+    };
+  });
+
+  res.json({
+    employees,
+    teams,
+    departments,
+    managers,
+    overall,
+    retirementRepository: nearRetirement,
+    messagesSent: allMessages.filter(m => m.senderId === reqUser.userId)
+  });
+});
+
+// Post Connect intervention endpoint
+router.post("/ld/connect", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin" && reqUser.role !== "manager") {
+    res.status(403).json({ error: "Only L&D administrators and managers can initiate Connect interventions." });
+    return;
+  }
+
+  const { targetType, targetId, message, type, assignedModuleId } = req.body;
+  
+  if (!targetType || !targetId || !message || !type) {
+    res.status(400).json({ error: "targetType, targetId, message and type are required." });
+    return;
+  }
+
+  const newMessage = {
+    id: `msg_${Date.now()}`,
+    senderId: reqUser.userId,
+    senderName: reqUser.fullName,
+    targetType,
+    targetId,
+    message,
+    type,
+    assignedModuleId,
+    status: "unread",
+    createdAt: new Date().toISOString()
+  };
+
+  db.addLDMessage(newMessage);
+
+  // If a training module is assigned, register state changes in target employees progress!
+  if (type === "assign" && assignedModuleId) {
+    const activeMod = db.getModules().find(m => m.id === assignedModuleId);
+    if (activeMod) {
+      if (targetType === "employee") {
+        const existingProg = db.getProgress().find(p => p.userId === targetId && p.moduleId === assignedModuleId);
+        if (!existingProg) {
+          db.saveProgress({
+            id: `prog_as_${Date.now()}`,
+            userId: targetId,
+            moduleId: assignedModuleId,
+            status: "in_progress",
+            completedAt: ""
+          });
+        }
+      } else if (targetType === "team") {
+        const employeesInTeam = db.getUsers().filter(u => u.role === "employee" && u.jobTitle === targetId);
+        employeesInTeam.forEach(emp => {
+          const existingProg = db.getProgress().find(p => p.userId === emp.id && p.moduleId === assignedModuleId);
+          if (!existingProg) {
+            db.saveProgress({
+              id: `prog_as_${emp.id}_${Date.now()}`,
+              userId: emp.id,
+              moduleId: assignedModuleId,
+              status: "in_progress",
+              completedAt: ""
+            });
+          }
+        });
+      } else if (targetType === "department") {
+        const employeesInDept = db.getUsers().filter(u => u.role === "employee" && u.department === targetId);
+        employeesInDept.forEach(emp => {
+          const existingProg = db.getProgress().find(p => p.userId === emp.id && p.moduleId === assignedModuleId);
+          if (!existingProg) {
+            db.saveProgress({
+              id: `prog_as_${emp.id}_${Date.now()}`,
+              userId: emp.id,
+              moduleId: assignedModuleId,
+              status: "in_progress",
+              completedAt: ""
+            });
+          }
+        });
+      }
+    }
+  }
+
+  res.status(201).json({
+    success: true,
+    message: "Connect instruction sent successfully.",
+    newMessage
+  });
+});
+
+// Get user inbox messages
+router.get("/ld/messages/inbox", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  const allMessages = db.getLDMessages();
+  
+  const inbox = allMessages.filter(msg => {
+    if (msg.targetType === "employee" && msg.targetId === reqUser.userId) return true;
+    if (msg.targetType === "manager" && msg.targetId === reqUser.userId) return true;
+    if (msg.targetType === "team" && msg.targetId === reqUser.jobTitle && reqUser.role === "employee") return true;
+    if (msg.targetType === "department" && msg.targetId === reqUser.department) return true;
+    return false;
+  });
+
+  res.json(inbox);
+});
+
+// Retirement Wisdom Capture custom assessment creation
+router.post("/ld/retirement/assess", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  if (reqUser.role !== "admin" && reqUser.role !== "manager") {
+    res.status(403).json({ error: "Only admins and managers can author custom elder wisdom assessments." });
+    return;
+  }
+
+  const { retireeId, assessmentTitle, questions } = req.body;
+  if (!retireeId || !assessmentTitle || !questions || questions.length === 0) {
+    res.status(400).json({ error: "retireeId, assessmentTitle, and questions are required." });
+    return;
+  }
+
+  const targetRetiree = db.getUsers().find(u => u.id === retireeId);
+  if (!targetRetiree) {
+    res.status(404).json({ error: "Target senior employee not found." });
+    return;
+  }
+
+  const newAssessment = {
+    id: `assess_wis_${retireeId}_${Date.now()}`,
+    title: assessmentTitle,
+    roleTarget: targetRetiree.jobTitle,
+    retireeId,
+    questions: questions.map((q: any, i: number) => ({
+      ...q,
+      id: `q_wis_${Date.now()}_${i}`,
+      points: q.points || 20
+    }))
+  };
+
+  db.state.assessments.push(newAssessment);
+  db.save();
+
+  db.addLDMessage({
+    id: `msg_wis_not_${Date.now()}`,
+    senderId: reqUser.userId,
+    senderName: reqUser.fullName,
+    targetType: "employee",
+    targetId: retireeId,
+    message: `📢 Urgent Veteran Transition: Please complete your custom wisdom-capture profile assessment: "${assessmentTitle}" before retirement to document operating rules.`,
+    type: "ask",
+    status: "unread",
+    createdAt: new Date().toISOString()
+  });
+
+  res.status(201).json({
+    success: true,
+    message: `Wisdom-capture evaluation: "${assessmentTitle}" assigned to veteran ${targetRetiree.fullName}.`,
+    newAssessment
+  });
+});
+
+// Retiree fetch wisdom requests
+router.get("/ld/retirement/my-requests", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  const myRequests = db.state.assessments.filter((a: any) => a.retireeId === reqUser.userId);
+  res.json(myRequests);
+});
+
+// Retiree wisdom-capture questionnaire submit & automatic SOP creation!
+router.post("/ld/retirement/submit", authenticateToken, (req: Request, res: Response) => {
+  const reqUser = (req as any).user;
+  const { assessmentId, answers } = req.body;
+
+  if (!assessmentId) {
+    res.status(400).json({ error: "assessmentId is required." });
+    return;
+  }
+
+  const originalAssess = db.state.assessments.find((a: any) => a.id === assessmentId);
+  if (!originalAssess) {
+    res.status(404).json({ error: "Requested wisdom-capture definition not found." });
+    return;
+  }
+
+  let wisdomContentText = `=== EXCLUSIVE ELDER WISDOM TRANSMISSION ===\n`;
+  wisdomContentText += `Documenting Veteran: ${reqUser.fullName}\n`;
+  wisdomContentText += `Designated Designation: ${reqUser.jobTitle} (${reqUser.onboardingData?.priorExperienceYrs || 20} Years Service)\n`;
+  wisdomContentText += `Date of Transmission: ${new Date().toLocaleDateString()}\n\n`;
+  wisdomContentText += `--- CAPTURED OPERATIONAL TRADITIONS & PRACTICAL STEPS ---\n\n`;
+
+  originalAssess.questions.forEach((q: any, idx: number) => {
+    const optIdx = answers[q.id];
+    const optionText = q.options[optIdx] || "Not provided";
+    wisdomContentText += `Procedural Concern #${idx + 1}: ${q.questionText}\n`;
+    wisdomContentText += `Veteran's Mandated Action: "${optionText}"\n\n`;
+  });
+
+  const wisdomSOPId = `doc_wis_${reqUser.userId}_${Date.now()}`;
+  const wisdomSOP = {
+    id: wisdomSOPId,
+    title: `Veteran Wisdom: ${originalAssess.title} - ${reqUser.fullName}`,
+    type: "expert_session" as const,
+    content: wisdomContentText,
+    competencyId: originalAssess.questions[0]?.competencyId || undefined,
+    tags: ["VeteranWisdom", "KnowledgeTransfer", reqUser.department],
+    createdBy: reqUser.userId,
+    createdAt: new Date().toISOString()
+  };
+
+  db.state.docs.push(wisdomSOP);
+  db.save();
+
+  const attempt = {
+    id: `att_wis_${Date.now()}`,
+    userId: reqUser.userId,
+    assessmentId,
+    score: 100,
+    completedAt: new Date().toISOString(),
+    answers,
+    passed: true
+  };
+
+  db.addAttempt(attempt);
+
+  res.status(201).json({
+    success: true,
+    message: "Thank you, veteran! Your critical operational knowledge was harvested and published into the central SOP knowledge index.",
+    publishedSOP: wisdomSOP
+  });
 });
 
 export default router;
